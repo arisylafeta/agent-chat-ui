@@ -1,8 +1,7 @@
 import React, { FormEvent } from "react";
-import { Label } from "../ui/label";
 import { Button } from "../ui/button";
-import { Camera, LoaderCircle, ArrowUp } from "lucide-react";
-import { ContentBlocksPreview } from "./contentblocks-preview";
+import { Camera, ArrowUp, Square } from "lucide-react";
+import { ContentBlocksPreview } from "@/components/chat/contentblocks-preview";
 
 export function MultimodalInput(props: {
   input: string;
@@ -48,42 +47,56 @@ export function MultimodalInput(props: {
             form?.requestSubmit();
           }
         }}
-        placeholder="Send a message..."
-        className="field-sizing-content resize-none border-none bg-transparent p-3.5 pb-0 text-sm shadow-none ring-0 outline-none focus:ring-0 focus:outline-none"
+        placeholder="Type your message..."
+        className="field-sizing-content resize-none border-none bg-transparent p-3.5 pb-0 shadow-none ring-0 outline-none focus:ring-0 focus:outline-none"
       />
 
-      <div className="flex items-center gap-6 p-2 pt-4">
-        <Label
-          htmlFor="file-input"
-          className="inline-flex aspect-square h-8 items-center justify-center rounded-lg p-1 transition-colors hover:bg-accent cursor-pointer"
+      <div className="flex items-center gap-4 p-2 pt-4">
+        {/* Camera icon button centered inside a circular button */}
+        <Button
+          type="button"
+          variant="ghost"
+          className="aspect-square h-8 rounded-full p-1.5 transition-colors hover:bg-accent"
           aria-label="Upload file"
+          onClick={() => {
+            const inputEl = document.getElementById("file-input") as HTMLInputElement | null;
+            inputEl?.click();
+          }}
         >
-          <Camera size={14} aria-hidden style={{ width: 14, height: 14 }} />
-          <span className="sr-only">Upload file</span>
-        </Label>
+          <Camera className="h-5 w-5 text-gray-600" aria-hidden />
+        </Button>
         <input
           id="file-input"
           type="file"
           onChange={onFileChange}
           multiple
           accept="image/jpeg,image/png,image/gif,image/webp,application/pdf"
-          className="hidden"
+          className="sr-only"
         />
-        {isLoading ? (
-          <Button key="stop" onClick={onStop} className="ml-auto">
-            <LoaderCircle className="h-4 w-4 animate-spin" />
-            Cancel
-          </Button>
-        ) : (
-          <Button
-            type="submit"
-            aria-label="Send message"
-            className="ml-auto size-8 rounded-full bg-primary text-primary-foreground transition-colors duration-200 hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
-            disabled={isLoading || (!input.trim() && contentBlocks.length === 0)}
-          >
-            <ArrowUp size={14} />
-          </Button>
-        )}
+
+        {/* Action buttons aligned to the right */}
+        <div className="ml-auto flex items-center gap-2">
+          {isLoading ? (
+            <Button
+              key="stop"
+              type="button"
+              onClick={onStop}
+              aria-label="Stop generating"
+              className="size-8 rounded-full bg-foreground p-1.5 text-background transition-colors hover:bg-foreground/90"
+            >
+              <Square className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              aria-label="Send message"
+              className="size-8 rounded-full bg-primary p-1.5 text-primary-foreground shadow-md transition-colors hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
+              disabled={isLoading || (!input.trim() && contentBlocks.length === 0)}
+            >
+              <ArrowUp className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
     </form>
   );

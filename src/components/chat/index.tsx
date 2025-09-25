@@ -1,19 +1,18 @@
 import { v4 as uuidv4 } from "uuid";
 import { ReactNode, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useStreamContext } from "@/providers/Stream";
 import { useState, FormEvent } from "react";
 import { Button } from "../ui/button";
 import { Checkpoint, Message } from "@langchain/langgraph-sdk";
 import { ensureToolCallsHaveResponses } from "@/lib/ensure-tool-responses";
-import { ChatHeader } from "./chat-header";
+import { ChatHeader } from "@/components/chat/chat-header";
 import { MultimodalInput } from "./multimodal-input";
-import { Landing } from "../landing-page/landing";
 import { ArrowDown } from "lucide-react";
 import { useQueryState, parseAsBoolean } from "nuqs";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
-import ThreadHistory from "../sidebar/app-sidebar";
+import ThreadHistory from "@/components/sidebar/app-sidebar";
 import { Messages } from "@/components/messages/messages";
 import { toast } from "sonner";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
@@ -104,7 +103,7 @@ export function Thread() {
   // Common class tokens (reduces duplication)
   const SCROLL_BASE = "absolute inset-0 min-w-0 overflow-x-hidden overflow-y-scroll touch-pan-y overscroll-behavior-contain -webkit-overflow-scrolling-touch no-scrollbar scrollbar-none";
   const CONTENT_BASE = "pt-6 pb-8 flex flex-col gap-4 w-full min-w-0 overflow-x-hidden";
-  const CONTENT_OPEN = "px-4 md:max-w-[400px]";
+  const CONTENT_OPEN = "px-4";
   const CONTENT_CLOSED = "max-w-3xl mx-auto";
   const SCROLL_PADDING_RIGHT_OPEN = "md:pr-[420px]";
 
@@ -123,7 +122,7 @@ export function Thread() {
   }, [artifactOpen]);
 
   // Coordinate sidebar closing: blank background first, then close after a wait
-  const onArtifactClose = async (opts?: { wait?: number }) => {
+  const onSidebarClose = async (opts?: { wait?: number }) => {
     const waitMs = opts?.wait ?? 150; // small lead time before closing
     setBlankArtifactBackground(true);
     await new Promise((r) => setTimeout(r, waitMs));
@@ -311,101 +310,73 @@ export function Thread() {
           }}
           transition={{ duration: 0.2, ease: "linear" }}
         >
-          {chatStarted && (
-            <ChatHeader
-              chatStarted={chatStarted}
-              isOverlayLayout={artifactOpenForLayout}
-              isLargeScreen={isLargeScreen}
-              chatHistoryOpen={chatHistoryOpen}
-              onToggleSidebar={() => setChatHistoryOpen((p) => !p)}
-              onNewThread={() => setThreadId(null)}
-            />
-          )}
+          <ChatHeader
+            chatStarted={chatStarted}
+            isOverlayLayout={artifactOpenForLayout}
+            isLargeScreen={isLargeScreen}
+            chatHistoryOpen={chatHistoryOpen}
+            onToggleSidebar={() => setChatHistoryOpen((p) => !p)}
+            onNewThread={() => setThreadId(null)}
+          />
 
-          <AnimatePresence mode="sync">
-            {chatStarted ? (
-              <motion.div
-                key="chat"
-                initial={{ y: -50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.5, ease: "easeOut" }}
-                className="flex flex-1 flex-col"
-              >
-                <StickToBottom className="relative flex-1 overflow-hidden no-scrollbar">
-                  <StickyToBottomContent
-                    className={cn(
-                      SCROLL_BASE,
-                      isOverlayLayout ? undefined : "px-4",
-                      isOverlayLayout && SCROLL_PADDING_RIGHT_OPEN,
-                    )}
-                    contentClassName={cn(
-                      CONTENT_BASE,
-                      isOverlayLayout ? CONTENT_OPEN : CONTENT_CLOSED,
-                    )}
-                    content={
-                      <Messages
-                        messages={messages}
-                        isLoading={isLoading}
-                        firstTokenReceived={firstTokenReceived}
-                        hasNoAIOrToolMessages={hasNoAIOrToolMessages}
-                        streamInterrupt={stream.interrupt}
-                        handleRegenerate={handleRegenerate}
-                      />
-                    }
-                    footer={
-                      <div className="absolute bottom-4 left-0 right-0 pointer-events-none">
-                        <div className={cn(isOverlayLayout ? CONTENT_OPEN : CONTENT_CLOSED)}>
-                          <div className="flex justify-center pointer-events-auto">
-                            <ScrollToBottom className="animate-in fade-in-0 zoom-in-95" />
-                          </div>
-                        </div>
-                      </div>
-                    }
-                  />
-                </StickToBottom>
-
-                {/* Static bottom input panel (outside scroll container) */}
-                <motion.div
-                  initial={{ y: -30, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.4, ease: "easeOut" }}
-                  className={cn(
-                    "flex flex-col items-center gap-8 bg-white w-full min-w-0 overflow-x-hidden",
-                    // When artifact overlay is open, use CONTENT_OPEN (px-4 + narrow max width)
-                    // When history sidebar is open (non-overlay), add just horizontal padding
-                    isOverlayLayout ? CONTENT_OPEN : chatHistoryOpen ? "px-4" : "",
-                  )}
-                >
-                  <div
-                    ref={dropRef}
-                    className={cn(
-                      "bg-muted relative z-10 mb-8 w-full rounded-2xl shadow-xs transition-all",
-                      isOverlayLayout ? undefined : CONTENT_CLOSED,
-                      dragOver
-                        ? "border-primary border-2 border-dotted"
-                        : "border border-solid",
-                    )}
-                  >
-                    <MultimodalInput
-                      input={input}
-                      setInput={setInput}
-                      onPaste={handlePaste}
-                      onSubmit={handleSubmit}
-                      contentBlocks={contentBlocks}
-                      onRemoveBlock={removeBlock}
-                      onFileChange={handleFileUpload}
-                      isLoading={isLoading}
-                      onStop={() => stream.stop()}
-                    />
+          <StickToBottom className="relative flex-1 overflow-hidden no-scrollbar">
+            <StickyToBottomContent
+              className={cn(
+                SCROLL_BASE,
+                isOverlayLayout ? undefined : "px-4",
+                isOverlayLayout && SCROLL_PADDING_RIGHT_OPEN,
+                !chatStarted && "mt-[25vh] flex flex-col items-stretch",
+              )}
+              contentClassName={cn(
+                CONTENT_BASE,
+                isOverlayLayout ? CONTENT_OPEN : CONTENT_CLOSED,
+              )}
+              content={
+                <Messages
+                  messages={messages}
+                  isLoading={isLoading}
+                  firstTokenReceived={firstTokenReceived}
+                  hasNoAIOrToolMessages={hasNoAIOrToolMessages}
+                  streamInterrupt={stream.interrupt}
+                  handleRegenerate={handleRegenerate}
+                />
+              }
+              footer={
+                <div className="absolute bottom-4 left-0 right-0 pointer-events-none">
+                  <div className={cn(isOverlayLayout ? CONTENT_OPEN : CONTENT_CLOSED)}>
+                    <div className="flex justify-center pointer-events-auto">
+                      <ScrollToBottom className="animate-in fade-in-0 zoom-in-95" />
+                    </div>
                   </div>
-                </motion.div>
-              </motion.div>
-            ) : (
-              <Landing
-                key="landing"
-                contentClassName={cn(isOverlayLayout ? CONTENT_OPEN : CONTENT_CLOSED)}
-                dropRef={dropRef}
-                dragOver={dragOver}
+                </div>
+              }
+            />
+          </StickToBottom>
+
+          {/* Static bottom input panel (outside scroll container) */}
+          <div
+            className={cn(
+              "flex flex-col items-center gap-8 bg-white w-full min-w-0 overflow-x-hidden",
+              isOverlayLayout ? CONTENT_OPEN : chatHistoryOpen ? "px-4" : "",
+            )}
+          >
+            {!chatStarted && (
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-semibold tracking-tight">Agent Chat</h1>
+              </div>
+            )}
+
+            <div
+              ref={dropRef}
+              className={cn(
+                "bg-muted relative z-10 mb-8 w-full rounded-2xl shadow-xs transition-all",
+                isOverlayLayout ? undefined : CONTENT_CLOSED,
+                dragOver
+                  ? "border-primary border-2 border-dotted"
+                  : "border border-solid",
+              )}
+            >
+              <MultimodalInput
                 input={input}
                 setInput={setInput}
                 onPaste={handlePaste}
@@ -416,13 +387,13 @@ export function Thread() {
                 isLoading={isLoading}
                 onStop={() => stream.stop()}
               />
-            )}
-          </AnimatePresence>
+            </div>
+          </div>
         </motion.div>
 
         {/* Artifact Sidebar */}
         <ArtifactSidebar
-          onClose={() => onArtifactClose({ wait: 150 })}
+          onClose={() => onSidebarClose({ wait: 150 })}
           open={artifactOpen}
           isSidebarOpen={chatHistoryOpen}
           blankBackground={blankArtifactBackground}

@@ -5,7 +5,7 @@ import { getContentString } from "@/lib/utils";
 import { BranchSwitcher, CommandBar } from "./shared";
 import { MarkdownText } from "../markdown-text";
 import { LoadExternalComponent } from "@langchain/langgraph-sdk/react-ui";
-import { Writer } from "../artifact/writer";
+import { Writer } from "@/components/artifact/writer/index";
 import { cn } from "@/lib/utils";
 import { ToolCalls, ToolResult } from "./tool-calls";
 import { MessageContentComplex } from "@langchain/core/messages";
@@ -120,9 +120,7 @@ export function AssistantMessage({
 
   const thread = useStreamContext();
   const isLastMessage =
-    message && thread.messages.length > 0
-      ? thread.messages[thread.messages.length - 1].id === message.id
-      : false;
+    thread.messages[thread.messages.length - 1].id === message?.id;
   const hasNoAIOrToolMessages = !thread.messages.find(
     (m) => m.type === "ai" || m.type === "tool",
   );
@@ -166,8 +164,8 @@ export function AssistantMessage({
         ) : (
           <>
             {contentString.length > 0 && (
-              <div className="px-0 py-0 text-left max-w-[min(80%,40rem)]">
-                <div className="prose prose-zinc prose-sm dark:prose-invert md:prose-sm leading-tight">
+              <div className="px-0 py-0 text-left max-w-[min(70%,48rem)]">
+                <div className="prose prose-zinc prose-sm dark:prose-invert md:prose-sm leading-tight max-w-none break-words">
                   <MarkdownText>{contentString}</MarkdownText>
                 </div>
               </div>

@@ -1,4 +1,4 @@
-import { Button } from "../ui/button";
+import { TooltipIconButton } from "../ui/tooltip-icon-button";
 import { PanelRightOpen, PanelRightClose, Plus } from "lucide-react";
 import Image from "next/image";
 
@@ -25,28 +25,27 @@ export function ChatHeader(props: {
     <header className="sticky top-0 z-10 flex items-center gap-2 bg-background px-2 py-1.5 md:px-2">
       {/* Left: Buttons (sidebar toggle first with border, then New Chat) */}
       <div className="flex items-center gap-2">
-        <Button
-          size="icon"
-          variant="outline"
+        <TooltipIconButton
+          tooltip="Toggle sidebar"
           aria-label="Toggle sidebar"
           onClick={onToggleSidebar}
+          variant="outline"
         >
           {chatHistoryOpen ? (
             <PanelRightOpen className="size-5" />
           ) : (
             <PanelRightClose className="size-5" />
           )}
-        </Button>
+        </TooltipIconButton>
 
-        <Button
-          size="icon"
+        <TooltipIconButton
+          tooltip="New Chat"
+          aria-label="New Chat"
           onClick={onNewThread}
           variant="outline"
-          aria-label="New Chat"
         >
           <Plus className="size-5" />
-
-        </Button>
+        </TooltipIconButton>
       </div>
 
       {/* Right: Wordmark */}
