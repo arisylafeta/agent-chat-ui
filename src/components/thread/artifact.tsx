@@ -14,6 +14,13 @@ import { createPortal } from "react-dom";
 
 type Setter<T> = (value: T | ((value: T) => T)) => void;
 
+type BoundingBox = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
 const ArtifactSlotContext = createContext<{
   open: [string | null, Setter<string | null>];
   mounted: [string | null, Setter<string | null>];
@@ -22,6 +29,7 @@ const ArtifactSlotContext = createContext<{
   content: [HTMLElement | null, Setter<HTMLElement | null>];
 
   context: [Record<string, unknown>, Setter<Record<string, unknown>>];
+  boundingBox: [BoundingBox, Setter<BoundingBox>];
 }>(null!);
 
 /**
@@ -103,9 +111,70 @@ export function ArtifactProvider(props: { children?: ReactNode }) {
   const mounted = useState<string | null>(null);
   const context = useState<Record<string, unknown>>({});
 
+  const boundingBox = useState<BoundingBox>({
+    left: 0,
+    top: 0,
+    width: 0,
+    height: 0,
+  });
+
+  const [, setBoundingBox] = boundingBox;
+
+  // Initialize a sensible default bounding box (centered) and track last clicked element
+  useEffect(() => {
+    // Set a centered default box for first-time opens
+    try {
+      if (typeof window !== "undefined") {
+        const w = window.innerWidth || 0;
+        const h = window.innerHeight || 0;
+        if (w > 0 && h > 0) {
+          setBoundingBox((prev) =>
+            prev.width > 0 && prev.height > 0
+              ? prev
+              : {
+                  left: Math.max(0, Math.round(w / 2 - 150)),
+                  top: Math.max(0, Math.round(h / 2 - 100)),
+                  width: 300,
+                  height: 200,
+                },
+          );
+        }
+      }
+    } catch {
+      // no-op
+    }
+
+    // Capture the last mousedown target's bounding client rect as the animation origin
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target || !target.getBoundingClientRect) return;
+      try {
+        const rect = target.getBoundingClientRect();
+        if (!rect) return;
+        setBoundingBox({
+          left: rect.left,
+          top: rect.top,
+          width: rect.width,
+          height: rect.height,
+        });
+      } catch {
+        // no-op
+      }
+    };
+
+    if (typeof document !== "undefined") {
+      document.addEventListener("mousedown", handler, { capture: true });
+    }
+    return () => {
+      if (typeof document !== "undefined") {
+        document.removeEventListener("mousedown", handler, { capture: true } as any);
+      }
+    };
+  }, [setBoundingBox]);
+
   return (
     <ArtifactSlotContext.Provider
-      value={{ open, mounted, title, content, context }}
+      value={{ open, mounted, title, content, context, boundingBox }}
     >
       {props.children}
     </ArtifactSlotContext.Provider>
@@ -186,4 +255,13 @@ export function useArtifactOpen() {
 export function useArtifactContext() {
   const context = useContext(ArtifactSlotContext);
   return context.context;
+}
+
+/**
+ * Hook to read the last-click bounding box for animating artifact overlays
+ * from the source element (Supabase parity behavior).
+ */
+export function useArtifactBoundingBox() {
+  const context = useContext(ArtifactSlotContext);
+  return context.boundingBox[0];
 }

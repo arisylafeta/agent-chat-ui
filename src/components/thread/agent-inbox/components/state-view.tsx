@@ -251,7 +251,7 @@ export function StateView({
       className={cn(
         "flex w-full flex-row gap-0",
         view === "state" &&
-          "border-t-[1px] border-gray-100 lg:border-t-[0px] lg:border-l-[1px]",
+          "border-t-[1px] border-gray-100 md:border-t-[0px] md:border-l-[1px]",
       )}
     >
       {view === "description" && (

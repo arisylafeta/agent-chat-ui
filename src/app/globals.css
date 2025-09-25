@@ -1,8 +1,9 @@
 @import "tailwindcss";
 
 @plugin "tailwindcss-animate";
+@plugin "@tailwindcss/typography";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is(.dark, .dark *));
 
 :root {
   --background: oklch(1 0 0);
@@ -114,6 +115,22 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+@utility text-balance {
+  text-wrap: balance;
+}
+
+@utility -webkit-overflow-scrolling-touch {
+  -webkit-overflow-scrolling: touch;
+}
+
+@utility touch-pan-y {
+  touch-action: pan-y;
+}
+
+@utility overscroll-behavior-contain {
+  overscroll-behavior: contain;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -121,6 +138,12 @@
 
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  html {
+    overflow-x: hidden;
   }
 
   :root {

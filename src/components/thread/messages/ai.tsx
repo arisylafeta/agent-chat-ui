@@ -5,6 +5,7 @@ import { getContentString } from "../utils";
 import { BranchSwitcher, CommandBar } from "./shared";
 import { MarkdownText } from "../markdown-text";
 import { LoadExternalComponent } from "@langchain/langgraph-sdk/react-ui";
+import { Writer } from "../../external-ui/writer";
 import { cn } from "@/lib/utils";
 import { ToolCalls, ToolResult } from "./tool-calls";
 import { MessageContentComplex } from "@langchain/core/messages";
@@ -24,8 +25,14 @@ function CustomComponent({
 }) {
   const artifact = useArtifact();
   const { values } = useStreamContext();
-  const customComponents = values.ui?.filter(
-    (ui) => ui.metadata?.message_id === message.id,
+  // Normalize values.ui to an array to avoid runtime errors if a non-array shape is returned
+  const uiList = Array.isArray(values.ui)
+    ? values.ui
+    : values.ui
+      ? [values.ui as any]
+      : [];
+  const customComponents = uiList.filter(
+    (ui) => ui?.metadata?.message_id === message.id,
   );
 
   if (!customComponents?.length) return null;
@@ -37,6 +44,8 @@ function CustomComponent({
           stream={thread}
           message={customComponent}
           meta={{ ui: customComponent, artifact }}
+          components={{ writer: Writer }}
+          fallback={<div className="text-sm text-gray-500">Loading…</div>}
         />
       ))}
     </Fragment>
@@ -141,8 +150,8 @@ export function AssistantMessage({
   }
 
   return (
-    <div className="group mr-auto flex items-start gap-2">
-      <div className="flex flex-col gap-2">
+    <div className="group mr-auto flex items-start gap-2 md:gap-3">
+      <div className="flex w-full flex-col gap-2 md:gap-4">
         {isToolResult ? (
           <>
             <ToolResult message={message} />
@@ -155,8 +164,10 @@ export function AssistantMessage({
         ) : (
           <>
             {contentString.length > 0 && (
-              <div className="py-1">
-                <MarkdownText>{contentString}</MarkdownText>
+              <div className="px-0 py-0 text-left">
+                <div className="prose prose-zinc prose-sm dark:prose-invert md:prose-base max-w-none">
+                  <MarkdownText>{contentString}</MarkdownText>
+                </div>
               </div>
             )}
 

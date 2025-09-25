@@ -76,7 +76,7 @@ function ThreadHistoryLoading() {
 }
 
 export default function ThreadHistory() {
-  const isLargeScreen = useMediaQuery("(min-width: 1024px)");
+  const isLargeScreen = useMediaQuery("(min-width: 768px)");
   const [chatHistoryOpen, setChatHistoryOpen] = useQueryState(
     "chatHistoryOpen",
     parseAsBoolean.withDefault(false),
@@ -96,7 +96,7 @@ export default function ThreadHistory() {
 
   return (
     <>
-      <div className="shadow-inner-right hidden h-screen w-[300px] shrink-0 flex-col items-start justify-start gap-6 border-r-[1px] border-slate-300 lg:flex">
+      <div className="shadow-inner-right hidden h-screen w-[300px] shrink-0 flex-col items-start justify-start gap-6 border-r-[1px] border-slate-300 md:flex">
         <div className="flex w-full items-center justify-between px-4 pt-1.5">
           <Button
             className="hover:bg-gray-100"
@@ -119,7 +119,7 @@ export default function ThreadHistory() {
           <ThreadList threads={threads} />
         )}
       </div>
-      <div className="lg:hidden">
+      <div className="md:hidden">
         <Sheet
           open={!!chatHistoryOpen && !isLargeScreen}
           onOpenChange={(open) => {
@@ -129,7 +129,7 @@ export default function ThreadHistory() {
         >
           <SheetContent
             side="left"
-            className="flex lg:hidden"
+            className="flex md:hidden"
           >
             <SheetHeader>
               <SheetTitle>Thread History</SheetTitle>

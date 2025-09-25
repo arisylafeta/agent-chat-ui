@@ -20,8 +20,7 @@ import {
   PanelRightOpen,
   PanelRightClose,
   SquarePen,
-  XIcon,
-  Plus,
+  Camera,
 } from "lucide-react";
 import { useQueryState, parseAsBoolean } from "nuqs";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
@@ -29,7 +28,6 @@ import ThreadHistory from "./history";
 import { toast } from "sonner";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { Label } from "../ui/label";
-import { Switch } from "../ui/switch";
 import { GitHubSVG } from "../icons/github";
 import {
   Tooltip,
@@ -39,12 +37,11 @@ import {
 } from "../ui/tooltip";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { ContentBlocksPreview } from "./ContentBlocksPreview";
-import {
-  useArtifactOpen,
-  ArtifactContent,
-  ArtifactTitle,
-  useArtifactContext,
-} from "./artifact";
+import { useArtifactOpen, useArtifactContext } from "./artifact";
+import { ArtifactSidebar } from "./artifact-sidebar";
+
+// Sidebar width parity with supabase-ui (16rem = 256px)
+const SIDEBAR_WIDTH_PX = 256;
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -120,10 +117,7 @@ export function Thread() {
     "chatHistoryOpen",
     parseAsBoolean.withDefault(false),
   );
-  const [hideToolCalls, setHideToolCalls] = useQueryState(
-    "hideToolCalls",
-    parseAsBoolean.withDefault(false),
-  );
+  // Removed Hide Tool Calls control and query state
   const [input, setInput] = useState("");
   const {
     contentBlocks,
@@ -136,7 +130,7 @@ export function Thread() {
     handlePaste,
   } = useFileUpload();
   const [firstTokenReceived, setFirstTokenReceived] = useState(false);
-  const isLargeScreen = useMediaQuery("(min-width: 1024px)");
+  const isLargeScreen = useMediaQuery("(min-width: 768px)");
 
   const stream = useStreamContext();
   const messages = stream.messages;
@@ -179,6 +173,27 @@ export function Thread() {
       // no-op
     }
   }, [stream.error]);
+
+  // Persist sidebar open/closed state similar to supabase-ui (cookie/local storage)
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("sidebar_state");
+      if (stored !== null) {
+        setChatHistoryOpen(stored === "true");
+      }
+    } catch {
+      // no-op
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem("sidebar_state", String(chatHistoryOpen));
+    } catch {
+      // no-op
+    }
+  }, [chatHistoryOpen]);
 
   // TODO: this should be part of the useStream hook
   const prevMessageLength = useRef(0);
@@ -257,36 +272,28 @@ export function Thread() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      <div className="relative hidden lg:flex">
+      <div className="relative hidden md:flex">
         <motion.div
           className="absolute z-20 h-full overflow-hidden border-r bg-white"
-          style={{ width: 300 }}
+          style={{ width: SIDEBAR_WIDTH_PX }}
           animate={
             isLargeScreen
-              ? { x: chatHistoryOpen ? 0 : -300 }
-              : { x: chatHistoryOpen ? 0 : -300 }
+              ? { x: chatHistoryOpen ? 0 : -SIDEBAR_WIDTH_PX }
+              : { x: chatHistoryOpen ? 0 : -SIDEBAR_WIDTH_PX }
           }
-          initial={{ x: -300 }}
-          transition={
-            isLargeScreen
-              ? { type: "spring", stiffness: 300, damping: 30 }
-              : { duration: 0 }
-          }
+          initial={{ x: -SIDEBAR_WIDTH_PX }}
+          transition={{ duration: 0.2, ease: "linear" }}
         >
           <div
             className="relative h-full"
-            style={{ width: 300 }}
+            style={{ width: SIDEBAR_WIDTH_PX }}
           >
             <ThreadHistory />
           </div>
         </motion.div>
       </div>
 
-      <div
-        className={cn(
-          "grid w-full grid-cols-[1fr_0fr] transition-all duration-500",
-          artifactOpen && "grid-cols-[3fr_2fr]",
-        )}
+      <div className={cn("grid w-full grid-cols-[1fr_0fr] transition-all duration-500")}
       >
         <motion.div
           className={cn(
@@ -295,26 +302,23 @@ export function Thread() {
           )}
           layout={isLargeScreen}
           animate={{
-            marginLeft: chatHistoryOpen ? (isLargeScreen ? 300 : 0) : 0,
+            marginLeft: chatHistoryOpen ? (isLargeScreen ? SIDEBAR_WIDTH_PX : 0) : 0,
             width: chatHistoryOpen
               ? isLargeScreen
-                ? "calc(100% - 300px)"
+                ? `calc(100% - ${SIDEBAR_WIDTH_PX}px)`
                 : "100%"
               : "100%",
           }}
-          transition={
-            isLargeScreen
-              ? { type: "spring", stiffness: 300, damping: 30 }
-              : { duration: 0 }
-          }
+          transition={{ duration: 0.2, ease: "linear" }}
         >
-          {!chatStarted && (
+          {!chatStarted && !artifactOpen && (
             <div className="absolute top-0 left-0 z-10 flex w-full items-center justify-between gap-3 p-2 pl-4">
               <div>
                 {(!chatHistoryOpen || !isLargeScreen) && (
                   <Button
                     className="hover:bg-gray-100"
                     variant="ghost"
+                    aria-label="Toggle sidebar"
                     onClick={() => setChatHistoryOpen((p) => !p)}
                   >
                     {chatHistoryOpen ? (
@@ -330,7 +334,7 @@ export function Thread() {
               </div>
             </div>
           )}
-          {chatStarted && (
+          {chatStarted && !artifactOpen && (
             <div className="relative z-10 flex items-center justify-between gap-3 p-2">
               <div className="relative flex items-center justify-start gap-2">
                 <div className="absolute left-0 z-10">
@@ -338,6 +342,7 @@ export function Thread() {
                     <Button
                       className="hover:bg-gray-100"
                       variant="ghost"
+                      aria-label="Toggle sidebar"
                       onClick={() => setChatHistoryOpen((p) => !p)}
                     >
                       {chatHistoryOpen ? (
@@ -392,11 +397,16 @@ export function Thread() {
           <StickToBottom className="relative flex-1 overflow-hidden">
             <StickyToBottomContent
               className={cn(
-                "absolute inset-0 overflow-y-scroll px-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-track]:bg-transparent",
+                "absolute inset-0 min-w-0 overflow-x-hidden overflow-y-auto scrollbar-pretty touch-pan-y overscroll-behavior-contain -webkit-overflow-scrolling-touch",
+                artifactOpen ? "" : "px-4",
+                artifactOpen && "md:pr-[420px]",
                 !chatStarted && "mt-[25vh] flex flex-col items-stretch",
                 chatStarted && "grid grid-rows-[1fr_auto]",
               )}
-              contentClassName="pt-8 pb-16  max-w-3xl mx-auto flex flex-col gap-4 w-full"
+              contentClassName={cn(
+                "pt-8 pb-16 flex flex-col gap-4 w-full min-w-0 overflow-x-hidden",
+                artifactOpen ? "px-4 md:max-w-[400px]" : "max-w-3xl mx-auto",
+              )}
               content={
                 <>
                   {messages
@@ -433,7 +443,11 @@ export function Thread() {
                 </>
               }
               footer={
-                <div className="sticky bottom-0 flex flex-col items-center gap-8 bg-white">
+                <div className={cn(
+                  "sticky bottom-0 flex flex-col items-center gap-8 bg-white w-full min-w-0 overflow-x-hidden",
+                  artifactOpen ? "px-4 md:max-w-[400px]" : "",
+                )}
+                >
                   {!chatStarted && (
                     <div className="flex items-center gap-3">
                       <LangGraphLogoSVG className="h-8 flex-shrink-0" />
@@ -448,7 +462,8 @@ export function Thread() {
                   <div
                     ref={dropRef}
                     className={cn(
-                      "bg-muted relative z-10 mx-auto mb-8 w-full max-w-3xl rounded-2xl shadow-xs transition-all",
+                      "bg-muted relative z-10 mb-8 w-full rounded-2xl shadow-xs transition-all",
+                      artifactOpen ? "" : "mx-auto max-w-3xl",
                       dragOver
                         ? "border-primary border-2 border-dotted"
                         : "border border-solid",
@@ -456,7 +471,7 @@ export function Thread() {
                   >
                     <form
                       onSubmit={handleSubmit}
-                      className="mx-auto grid max-w-3xl grid-rows-[1fr_auto] gap-2"
+                      className="grid grid-rows-[1fr_auto] gap-2 w-full"
                     >
                       <ContentBlocksPreview
                         blocks={contentBlocks}
@@ -484,29 +499,13 @@ export function Thread() {
                       />
 
                       <div className="flex items-center gap-6 p-2 pt-4">
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              id="render-tool-calls"
-                              checked={hideToolCalls ?? false}
-                              onCheckedChange={setHideToolCalls}
-                            />
-                            <Label
-                              htmlFor="render-tool-calls"
-                              className="text-sm text-gray-600"
-                            >
-                              Hide Tool Calls
-                            </Label>
-                          </div>
-                        </div>
                         <Label
                           htmlFor="file-input"
-                          className="flex cursor-pointer items-center gap-2"
+                          className="flex cursor-pointer items-center"
+                          aria-label="Upload file"
                         >
-                          <Plus className="size-5 text-gray-600" />
-                          <span className="text-sm text-gray-600">
-                            Upload PDF or Image
-                          </span>
+                          <Camera className="size-5 text-gray-600" aria-hidden />
+                          <span className="sr-only">Upload file</span>
                         </Label>
                         <input
                           id="file-input"
@@ -545,20 +544,13 @@ export function Thread() {
             />
           </StickToBottom>
         </motion.div>
-        <div className="relative flex flex-col border-l">
-          <div className="absolute inset-0 flex min-w-[30vw] flex-col">
-            <div className="grid grid-cols-[1fr_auto] border-b p-4">
-              <ArtifactTitle className="truncate overflow-hidden" />
-              <button
-                onClick={closeArtifact}
-                className="cursor-pointer"
-              >
-                <XIcon className="size-5" />
-              </button>
-            </div>
-            <ArtifactContent className="relative flex-grow" />
-          </div>
-        </div>
+
+        {/* Artifact Sidebar */}
+        <ArtifactSidebar
+          onClose={closeArtifact}
+          open={artifactOpen}
+          isSidebarOpen={chatHistoryOpen}
+        />
       </div>
     </div>
   );
