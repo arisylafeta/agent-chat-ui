@@ -1,20 +1,20 @@
 import { v4 as uuidv4 } from "uuid";
 import { ReactNode, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useStreamContext } from "@/providers/Stream";
 import { useState, FormEvent } from "react";
 import { Button } from "../ui/button";
 import { Checkpoint, Message } from "@langchain/langgraph-sdk";
 import { ensureToolCallsHaveResponses } from "@/lib/ensure-tool-responses";
-import { LangGraphLogoSVG } from "../icons/langgraph";
 import { ChatHeader } from "./chat-header";
-import { Messages } from "./Messages";
-import { MultimodalInput } from "./MultimodalInput";
+import { MultimodalInput } from "./multimodal-input";
+import { Landing } from "./landing";
 import { ArrowDown } from "lucide-react";
 import { useQueryState, parseAsBoolean } from "nuqs";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import ThreadHistory from "./history";
+import { Messages } from "./messages";
 import { toast } from "sonner";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useFileUpload } from "@/hooks/use-file-upload";
@@ -311,74 +311,99 @@ export function Thread() {
           }}
           transition={{ duration: 0.2, ease: "linear" }}
         >
-          <ChatHeader
-            chatStarted={chatStarted}
-            isOverlayLayout={artifactOpenForLayout}
-            isLargeScreen={isLargeScreen}
-            chatHistoryOpen={chatHistoryOpen}
-            onToggleSidebar={() => setChatHistoryOpen((p) => !p)}
-            onNewThread={() => setThreadId(null)}
-          />
-
-          <StickToBottom className="relative flex-1 overflow-hidden no-scrollbar">
-            <StickyToBottomContent
-              className={cn(
-                SCROLL_BASE,
-                isOverlayLayout ? undefined : "px-4",
-                isOverlayLayout && SCROLL_PADDING_RIGHT_OPEN,
-                !chatStarted && "mt-[25vh] flex flex-col items-stretch",
-              )}
-              contentClassName={cn(
-                CONTENT_BASE,
-                isOverlayLayout ? CONTENT_OPEN : CONTENT_CLOSED,
-              )}
-              content={
-                <Messages
-                  messages={messages}
-                  isLoading={isLoading}
-                  firstTokenReceived={firstTokenReceived}
-                  hasNoAIOrToolMessages={hasNoAIOrToolMessages}
-                  streamInterrupt={stream.interrupt}
-                  handleRegenerate={handleRegenerate}
-                />
-              }
-              footer={
-                <div className="absolute bottom-4 left-0 right-0 pointer-events-none">
-                  <div className={cn(isOverlayLayout ? CONTENT_OPEN : CONTENT_CLOSED)}>
-                    <div className="flex justify-center pointer-events-auto">
-                      <ScrollToBottom className="animate-in fade-in-0 zoom-in-95" />
-                    </div>
-                  </div>
-                </div>
-              }
+          {chatStarted && (
+            <ChatHeader
+              chatStarted={chatStarted}
+              isOverlayLayout={artifactOpenForLayout}
+              isLargeScreen={isLargeScreen}
+              chatHistoryOpen={chatHistoryOpen}
+              onToggleSidebar={() => setChatHistoryOpen((p) => !p)}
+              onNewThread={() => setThreadId(null)}
             />
-          </StickToBottom>
+          )}
 
-          {/* Static bottom input panel (outside scroll container) */}
-          <div
-            className={cn(
-              "flex flex-col items-center gap-8 bg-white w-full min-w-0 overflow-x-hidden",
-              isOverlayLayout ? CONTENT_OPEN : "",
-            )}
-          >
-            {!chatStarted && (
-              <div className="flex items-center gap-3">
-                <LangGraphLogoSVG className="h-8 flex-shrink-0" />
-                <h1 className="text-2xl font-semibold tracking-tight">Agent Chat</h1>
-              </div>
-            )}
+          <AnimatePresence mode="sync">
+            {chatStarted ? (
+              <motion.div
+                key="chat"
+                initial={{ y: -50, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+                className="flex flex-1 flex-col"
+              >
+                <StickToBottom className="relative flex-1 overflow-hidden no-scrollbar">
+                  <StickyToBottomContent
+                    className={cn(
+                      SCROLL_BASE,
+                      isOverlayLayout ? undefined : "px-4",
+                      isOverlayLayout && SCROLL_PADDING_RIGHT_OPEN,
+                    )}
+                    contentClassName={cn(
+                      CONTENT_BASE,
+                      isOverlayLayout ? CONTENT_OPEN : CONTENT_CLOSED,
+                    )}
+                    content={
+                      <Messages
+                        messages={messages}
+                        isLoading={isLoading}
+                        firstTokenReceived={firstTokenReceived}
+                        hasNoAIOrToolMessages={hasNoAIOrToolMessages}
+                        streamInterrupt={stream.interrupt}
+                        handleRegenerate={handleRegenerate}
+                      />
+                    }
+                    footer={
+                      <div className="absolute bottom-4 left-0 right-0 pointer-events-none">
+                        <div className={cn(isOverlayLayout ? CONTENT_OPEN : CONTENT_CLOSED)}>
+                          <div className="flex justify-center pointer-events-auto">
+                            <ScrollToBottom className="animate-in fade-in-0 zoom-in-95" />
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  />
+                </StickToBottom>
 
-            <div
-              ref={dropRef}
-              className={cn(
-                "bg-muted relative z-10 mb-8 w-full rounded-2xl shadow-xs transition-all",
-                isOverlayLayout ? undefined : CONTENT_CLOSED,
-                dragOver
-                  ? "border-primary border-2 border-dotted"
-                  : "border border-solid",
-              )}
-            >
-              <MultimodalInput
+                {/* Static bottom input panel (outside scroll container) */}
+                <motion.div
+                  initial={{ y: -30, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className={cn(
+                    "flex flex-col items-center gap-8 bg-white w-full min-w-0 overflow-x-hidden",
+                    isOverlayLayout ? CONTENT_OPEN : "",
+                  )}
+                >
+                  <div
+                    ref={dropRef}
+                    className={cn(
+                      "bg-muted relative z-10 mb-8 w-full rounded-2xl shadow-xs transition-all",
+                      isOverlayLayout ? undefined : CONTENT_CLOSED,
+                      dragOver
+                        ? "border-primary border-2 border-dotted"
+                        : "border border-solid",
+                    )}
+                  >
+                    <MultimodalInput
+                      input={input}
+                      setInput={setInput}
+                      onPaste={handlePaste}
+                      onSubmit={handleSubmit}
+                      contentBlocks={contentBlocks}
+                      onRemoveBlock={removeBlock}
+                      onFileChange={handleFileUpload}
+                      isLoading={isLoading}
+                      onStop={() => stream.stop()}
+                    />
+                  </div>
+                </motion.div>
+              </motion.div>
+            ) : (
+              <Landing
+                key="landing"
+                contentClassName={cn(isOverlayLayout ? CONTENT_OPEN : CONTENT_CLOSED)}
+                dropRef={dropRef}
+                dragOver={dragOver}
                 input={input}
                 setInput={setInput}
                 onPaste={handlePaste}
@@ -389,8 +414,8 @@ export function Thread() {
                 isLoading={isLoading}
                 onStop={() => stream.stop()}
               />
-            </div>
-          </div>
+            )}
+          </AnimatePresence>
         </motion.div>
 
         {/* Artifact Sidebar */}

@@ -1,8 +1,8 @@
 import React, { FormEvent } from "react";
 import { Label } from "../ui/label";
 import { Button } from "../ui/button";
-import { Camera, LoaderCircle } from "lucide-react";
-import { ContentBlocksPreview } from "./ContentBlocksPreview";
+import { Camera, LoaderCircle, ArrowUp } from "lucide-react";
+import { ContentBlocksPreview } from "./contentblocks-preview";
 
 export function MultimodalInput(props: {
   input: string;
@@ -48,13 +48,17 @@ export function MultimodalInput(props: {
             form?.requestSubmit();
           }
         }}
-        placeholder="Type your message..."
-        className="field-sizing-content resize-none border-none bg-transparent p-3.5 pb-0 shadow-none ring-0 outline-none focus:ring-0 focus:outline-none"
+        placeholder="Send a message..."
+        className="field-sizing-content resize-none border-none bg-transparent p-3.5 pb-0 text-sm shadow-none ring-0 outline-none focus:ring-0 focus:outline-none"
       />
 
       <div className="flex items-center gap-6 p-2 pt-4">
-        <Label htmlFor="file-input" className="flex cursor-pointer items-center" aria-label="Upload file">
-          <Camera className="size-5 text-gray-600" aria-hidden />
+        <Label
+          htmlFor="file-input"
+          className="inline-flex aspect-square h-8 items-center justify-center rounded-lg p-1 transition-colors hover:bg-accent cursor-pointer"
+          aria-label="Upload file"
+        >
+          <Camera size={14} aria-hidden style={{ width: 14, height: 14 }} />
           <span className="sr-only">Upload file</span>
         </Label>
         <input
@@ -71,8 +75,13 @@ export function MultimodalInput(props: {
             Cancel
           </Button>
         ) : (
-          <Button type="submit" className="ml-auto shadow-md transition-all" disabled={isLoading || (!input.trim() && contentBlocks.length === 0)}>
-            Send
+          <Button
+            type="submit"
+            aria-label="Send message"
+            className="ml-auto size-8 rounded-full bg-primary text-primary-foreground transition-colors duration-200 hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
+            disabled={isLoading || (!input.trim() && contentBlocks.length === 0)}
+          >
+            <ArrowUp size={14} />
           </Button>
         )}
       </div>
