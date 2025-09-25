@@ -343,7 +343,13 @@ export function Thread() {
                 />
               }
               footer={
-                <ScrollToBottom className="animate-in fade-in-0 zoom-in-95 absolute bottom-4 left-1/2 -translate-x-1/2" />
+                <div className="absolute bottom-4 left-0 right-0 pointer-events-none">
+                  <div className={cn(isOverlayLayout ? CONTENT_OPEN : CONTENT_CLOSED)}>
+                    <div className="flex justify-center pointer-events-auto">
+                      <ScrollToBottom className="animate-in fade-in-0 zoom-in-95" />
+                    </div>
+                  </div>
+                </div>
               }
             />
           </StickToBottom>

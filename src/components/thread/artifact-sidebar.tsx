@@ -118,10 +118,10 @@ export function ArtifactSidebar({
               borderRadius: 50,
             }}
           >
-            <div className={cn("flex flex-row items-start justify-between p-2", headerClassName)}>
-              <div className="flex flex-row items-start gap-4">
-                <button onClick={onClose} className="cursor-pointer" aria-label="Close artifact">
-                  <XIcon className="size-5" />
+            <div className={cn("flex flex-row items-center justify-between p-3 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60", headerClassName)}>
+              <div className="flex flex-row items-center gap-4">
+                <button onClick={onClose} className="h-fit p-2 rounded-md border border-zinc-200 hover:bg-accent/30 dark:border-zinc-700 dark:hover:bg-zinc-700" aria-label="Close artifact">
+                  <XIcon className="size-4" />
                 </button>
 
                 <div className="flex flex-col">
