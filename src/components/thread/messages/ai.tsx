@@ -164,8 +164,8 @@ export function AssistantMessage({
         ) : (
           <>
             {contentString.length > 0 && (
-              <div className="px-0 py-0 text-left">
-                <div className="prose prose-zinc prose-sm dark:prose-invert md:prose-base max-w-none">
+              <div className="px-0 py-0 text-left max-w-[min(80%,40rem)]">
+                <div className="prose prose-zinc prose-sm dark:prose-invert md:prose-sm leading-tight">
                   <MarkdownText>{contentString}</MarkdownText>
                 </div>
               </div>

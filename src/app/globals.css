@@ -171,4 +171,49 @@
   .shadow-inner-left {
     box-shadow: inset 9px 0 6px -1px rgb(0 0 0 / 0.02);
   }
+
+  /* Hide scrollbars while preserving scroll functionality */
+  .no-scrollbar {
+    -ms-overflow-style: none !important; /* IE and Edge */
+    scrollbar-width: none !important; /* Firefox */
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none !important; /* Chrome, Safari, Opera */
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+  .no-scrollbar::-webkit-scrollbar-thumb {
+    background: transparent !important;
+    border: none !important;
+  }
+  .no-scrollbar::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+
+  /* Ensure any nested scrollable elements also hide scrollbars when inside a no-scrollbar container */
+  .no-scrollbar *,
+  .no-scrollbar *::before,
+  .no-scrollbar *::after {
+    scrollbar-width: none !important; /* Firefox */
+  }
+  .no-scrollbar *::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+
+  /* Hard override for the chat scroll container */
+  #chat-scroll {
+    -ms-overflow-style: none !important; /* IE and Edge */
+    scrollbar-width: none !important; /* Firefox */
+    scrollbar-gutter: stable both-edges; /* Reduce layout shift when scrollbars show/hide */
+  }
+  #chat-scroll::-webkit-scrollbar {
+    display: none !important; /* Chrome, Safari, Opera */
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
 }

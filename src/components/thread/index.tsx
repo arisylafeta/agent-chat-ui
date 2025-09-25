@@ -6,42 +6,25 @@ import { useStreamContext } from "@/providers/Stream";
 import { useState, FormEvent } from "react";
 import { Button } from "../ui/button";
 import { Checkpoint, Message } from "@langchain/langgraph-sdk";
-import { AssistantMessage, AssistantMessageLoading } from "./messages/ai";
-import { HumanMessage } from "./messages/human";
-import {
-  DO_NOT_RENDER_ID_PREFIX,
-  ensureToolCallsHaveResponses,
-} from "@/lib/ensure-tool-responses";
+import { ensureToolCallsHaveResponses } from "@/lib/ensure-tool-responses";
 import { LangGraphLogoSVG } from "../icons/langgraph";
-import { TooltipIconButton } from "./tooltip-icon-button";
-import {
-  ArrowDown,
-  LoaderCircle,
-  PanelRightOpen,
-  PanelRightClose,
-  SquarePen,
-  Camera,
-} from "lucide-react";
+import { ChatHeader } from "./chat-header";
+import { Messages } from "./Messages";
+import { MultimodalInput } from "./MultimodalInput";
+import { ArrowDown } from "lucide-react";
 import { useQueryState, parseAsBoolean } from "nuqs";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
 import ThreadHistory from "./history";
 import { toast } from "sonner";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
-import { Label } from "../ui/label";
-import { GitHubSVG } from "../icons/github";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "../ui/tooltip";
 import { useFileUpload } from "@/hooks/use-file-upload";
-import { ContentBlocksPreview } from "./ContentBlocksPreview";
 import { useArtifactOpen, useArtifactContext } from "./artifact";
 import { ArtifactSidebar } from "./artifact-sidebar";
 
 // Sidebar width parity with supabase-ui (16rem = 256px)
 const SIDEBAR_WIDTH_PX = 256;
+// Artifact exit animation delay to keep layout stable during close (matches supabase-ui)
+const ARTIFACT_EXIT_DELAY_MS = 0;
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -52,8 +35,9 @@ function StickyToBottomContent(props: {
   const context = useStickToBottomContext();
   return (
     <div
+      id="chat-scroll"
       ref={context.scrollRef}
-      style={{ width: "100%", height: "100%" }}
+      style={{ width: "100%", height: "100%", overflowAnchor: "none" }}
       className={props.className}
     >
       <div
@@ -84,33 +68,15 @@ function ScrollToBottom(props: { className?: string }) {
   );
 }
 
-function OpenGitHubRepo() {
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <a
-            href="https://github.com/langchain-ai/agent-chat-ui"
-            target="_blank"
-            className="flex items-center justify-center"
-          >
-            <GitHubSVG
-              width="24"
-              height="24"
-            />
-          </a>
-        </TooltipTrigger>
-        <TooltipContent side="left">
-          <p>Open GitHub repo</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
 export function Thread() {
   const [artifactContext, setArtifactContext] = useArtifactContext();
   const [artifactOpen, closeArtifact] = useArtifactOpen();
+  
+  // Delayed state for chat width to prevent glitchy animation during artifact close
+  const [artifactOpenForLayout, setArtifactOpenForLayout] = useState(artifactOpen);
+  // Controls when the overlay background inside ArtifactSidebar should be opaque
+  // while the sidebar is still open, to blank the underlying thread before close.
+  const [blankArtifactBackground, setBlankArtifactBackground] = useState(false);
 
   const [threadId, _setThreadId] = useQueryState("threadId");
   const [chatHistoryOpen, setChatHistoryOpen] = useQueryState(
@@ -131,6 +97,40 @@ export function Thread() {
   } = useFileUpload();
   const [firstTokenReceived, setFirstTokenReceived] = useState(false);
   const isLargeScreen = useMediaQuery("(min-width: 768px)");
+
+  // Alias for readability in layout decisions
+  const isOverlayLayout = artifactOpenForLayout;
+
+  // Common class tokens (reduces duplication)
+  const SCROLL_BASE = "absolute inset-0 min-w-0 overflow-x-hidden overflow-y-scroll touch-pan-y overscroll-behavior-contain -webkit-overflow-scrolling-touch no-scrollbar scrollbar-none";
+  const CONTENT_BASE = "pt-6 pb-8 flex flex-col gap-4 w-full min-w-0 overflow-x-hidden";
+  const CONTENT_OPEN = "px-4 md:max-w-[400px]";
+  const CONTENT_CLOSED = "max-w-3xl mx-auto";
+  const SCROLL_PADDING_RIGHT_OPEN = "md:pr-[420px]";
+
+  // Sync the delayed layout state with artifact open/close
+  useEffect(() => {
+    if (artifactOpen) {
+      // Open immediately
+      setArtifactOpenForLayout(true);
+    } else {
+      // Close with delay to match Supabase animation timing
+      const timer = setTimeout(() => {
+        setArtifactOpenForLayout(false);
+      }, ARTIFACT_EXIT_DELAY_MS);
+      return () => clearTimeout(timer);
+    }
+  }, [artifactOpen]);
+
+  // Coordinate sidebar closing: blank background first, then close after a wait
+  const onSidebarClose = async (opts?: { wait?: number }) => {
+    const waitMs = opts?.wait ?? 150; // small lead time before closing
+    setBlankArtifactBackground(true);
+    await new Promise((r) => setTimeout(r, waitMs));
+    closeArtifact();
+    // Reset the blanking flag after exit likely completes
+    setTimeout(() => setBlankArtifactBackground(false), 700);
+  };
 
   const stream = useStreamContext();
   const messages = stream.messages;
@@ -311,245 +311,88 @@ export function Thread() {
           }}
           transition={{ duration: 0.2, ease: "linear" }}
         >
-          {!chatStarted && !artifactOpen && (
-            <div className="absolute top-0 left-0 z-10 flex w-full items-center justify-between gap-3 p-2 pl-4">
-              <div>
-                {(!chatHistoryOpen || !isLargeScreen) && (
-                  <Button
-                    className="hover:bg-gray-100"
-                    variant="ghost"
-                    aria-label="Toggle sidebar"
-                    onClick={() => setChatHistoryOpen((p) => !p)}
-                  >
-                    {chatHistoryOpen ? (
-                      <PanelRightOpen className="size-5" />
-                    ) : (
-                      <PanelRightClose className="size-5" />
-                    )}
-                  </Button>
-                )}
-              </div>
-              <div className="absolute top-2 right-4 flex items-center">
-                <OpenGitHubRepo />
-              </div>
-            </div>
-          )}
-          {chatStarted && !artifactOpen && (
-            <div className="relative z-10 flex items-center justify-between gap-3 p-2">
-              <div className="relative flex items-center justify-start gap-2">
-                <div className="absolute left-0 z-10">
-                  {(!chatHistoryOpen || !isLargeScreen) && (
-                    <Button
-                      className="hover:bg-gray-100"
-                      variant="ghost"
-                      aria-label="Toggle sidebar"
-                      onClick={() => setChatHistoryOpen((p) => !p)}
-                    >
-                      {chatHistoryOpen ? (
-                        <PanelRightOpen className="size-5" />
-                      ) : (
-                        <PanelRightClose className="size-5" />
-                      )}
-                    </Button>
-                  )}
-                </div>
-                <motion.button
-                  className="flex cursor-pointer items-center gap-2"
-                  onClick={() => setThreadId(null)}
-                  animate={{
-                    marginLeft: !chatHistoryOpen ? 48 : 0,
-                  }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 300,
-                    damping: 30,
-                  }}
-                >
-                  <LangGraphLogoSVG
-                    width={32}
-                    height={32}
-                  />
-                  <span className="text-xl font-semibold tracking-tight">
-                    Agent Chat
-                  </span>
-                </motion.button>
-              </div>
+          <ChatHeader
+            chatStarted={chatStarted}
+            isOverlayLayout={artifactOpenForLayout}
+            isLargeScreen={isLargeScreen}
+            chatHistoryOpen={chatHistoryOpen}
+            onToggleSidebar={() => setChatHistoryOpen((p) => !p)}
+            onNewThread={() => setThreadId(null)}
+          />
 
-              <div className="flex items-center gap-4">
-                <div className="flex items-center">
-                  <OpenGitHubRepo />
-                </div>
-                <TooltipIconButton
-                  size="lg"
-                  className="p-4"
-                  tooltip="New thread"
-                  variant="ghost"
-                  onClick={() => setThreadId(null)}
-                >
-                  <SquarePen className="size-5" />
-                </TooltipIconButton>
-              </div>
-
-              <div className="from-background to-background/0 absolute inset-x-0 top-full h-5 bg-gradient-to-b" />
-            </div>
-          )}
-
-          <StickToBottom className="relative flex-1 overflow-hidden">
+          <StickToBottom className="relative flex-1 overflow-hidden no-scrollbar">
             <StickyToBottomContent
               className={cn(
-                "absolute inset-0 min-w-0 overflow-x-hidden overflow-y-auto scrollbar-pretty touch-pan-y overscroll-behavior-contain -webkit-overflow-scrolling-touch",
-                artifactOpen ? "" : "px-4",
-                artifactOpen && "md:pr-[420px]",
+                SCROLL_BASE,
+                isOverlayLayout ? undefined : "px-4",
+                isOverlayLayout && SCROLL_PADDING_RIGHT_OPEN,
                 !chatStarted && "mt-[25vh] flex flex-col items-stretch",
-                chatStarted && "grid grid-rows-[1fr_auto]",
               )}
               contentClassName={cn(
-                "pt-8 pb-16 flex flex-col gap-4 w-full min-w-0 overflow-x-hidden",
-                artifactOpen ? "px-4 md:max-w-[400px]" : "max-w-3xl mx-auto",
+                CONTENT_BASE,
+                isOverlayLayout ? CONTENT_OPEN : CONTENT_CLOSED,
               )}
               content={
-                <>
-                  {messages
-                    .filter((m) => !m.id?.startsWith(DO_NOT_RENDER_ID_PREFIX))
-                    .map((message, index) =>
-                      message.type === "human" ? (
-                        <HumanMessage
-                          key={message.id || `${message.type}-${index}`}
-                          message={message}
-                          isLoading={isLoading}
-                        />
-                      ) : (
-                        <AssistantMessage
-                          key={message.id || `${message.type}-${index}`}
-                          message={message}
-                          isLoading={isLoading}
-                          handleRegenerate={handleRegenerate}
-                        />
-                      ),
-                    )}
-                  {/* Special rendering case where there are no AI/tool messages, but there is an interrupt.
-                    We need to render it outside of the messages list, since there are no messages to render */}
-                  {hasNoAIOrToolMessages && !!stream.interrupt && (
-                    <AssistantMessage
-                      key="interrupt-msg"
-                      message={undefined}
-                      isLoading={isLoading}
-                      handleRegenerate={handleRegenerate}
-                    />
-                  )}
-                  {isLoading && !firstTokenReceived && (
-                    <AssistantMessageLoading />
-                  )}
-                </>
+                <Messages
+                  messages={messages}
+                  isLoading={isLoading}
+                  firstTokenReceived={firstTokenReceived}
+                  hasNoAIOrToolMessages={hasNoAIOrToolMessages}
+                  streamInterrupt={stream.interrupt}
+                  handleRegenerate={handleRegenerate}
+                />
               }
               footer={
-                <div className={cn(
-                  "sticky bottom-0 flex flex-col items-center gap-8 bg-white w-full min-w-0 overflow-x-hidden",
-                  artifactOpen ? "px-4 md:max-w-[400px]" : "",
-                )}
-                >
-                  {!chatStarted && (
-                    <div className="flex items-center gap-3">
-                      <LangGraphLogoSVG className="h-8 flex-shrink-0" />
-                      <h1 className="text-2xl font-semibold tracking-tight">
-                        Agent Chat
-                      </h1>
-                    </div>
-                  )}
-
-                  <ScrollToBottom className="animate-in fade-in-0 zoom-in-95 absolute bottom-full left-1/2 mb-4 -translate-x-1/2" />
-
-                  <div
-                    ref={dropRef}
-                    className={cn(
-                      "bg-muted relative z-10 mb-8 w-full rounded-2xl shadow-xs transition-all",
-                      artifactOpen ? "" : "mx-auto max-w-3xl",
-                      dragOver
-                        ? "border-primary border-2 border-dotted"
-                        : "border border-solid",
-                    )}
-                  >
-                    <form
-                      onSubmit={handleSubmit}
-                      className="grid grid-rows-[1fr_auto] gap-2 w-full"
-                    >
-                      <ContentBlocksPreview
-                        blocks={contentBlocks}
-                        onRemove={removeBlock}
-                      />
-                      <textarea
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onPaste={handlePaste}
-                        onKeyDown={(e) => {
-                          if (
-                            e.key === "Enter" &&
-                            !e.shiftKey &&
-                            !e.metaKey &&
-                            !e.nativeEvent.isComposing
-                          ) {
-                            e.preventDefault();
-                            const el = e.target as HTMLElement | undefined;
-                            const form = el?.closest("form");
-                            form?.requestSubmit();
-                          }
-                        }}
-                        placeholder="Type your message..."
-                        className="field-sizing-content resize-none border-none bg-transparent p-3.5 pb-0 shadow-none ring-0 outline-none focus:ring-0 focus:outline-none"
-                      />
-
-                      <div className="flex items-center gap-6 p-2 pt-4">
-                        <Label
-                          htmlFor="file-input"
-                          className="flex cursor-pointer items-center"
-                          aria-label="Upload file"
-                        >
-                          <Camera className="size-5 text-gray-600" aria-hidden />
-                          <span className="sr-only">Upload file</span>
-                        </Label>
-                        <input
-                          id="file-input"
-                          type="file"
-                          onChange={handleFileUpload}
-                          multiple
-                          accept="image/jpeg,image/png,image/gif,image/webp,application/pdf"
-                          className="hidden"
-                        />
-                        {stream.isLoading ? (
-                          <Button
-                            key="stop"
-                            onClick={() => stream.stop()}
-                            className="ml-auto"
-                          >
-                            <LoaderCircle className="h-4 w-4 animate-spin" />
-                            Cancel
-                          </Button>
-                        ) : (
-                          <Button
-                            type="submit"
-                            className="ml-auto shadow-md transition-all"
-                            disabled={
-                              isLoading ||
-                              (!input.trim() && contentBlocks.length === 0)
-                            }
-                          >
-                            Send
-                          </Button>
-                        )}
-                      </div>
-                    </form>
-                  </div>
-                </div>
+                <ScrollToBottom className="animate-in fade-in-0 zoom-in-95 absolute bottom-4 left-1/2 -translate-x-1/2" />
               }
             />
           </StickToBottom>
+
+          {/* Static bottom input panel (outside scroll container) */}
+          <div
+            className={cn(
+              "flex flex-col items-center gap-8 bg-white w-full min-w-0 overflow-x-hidden",
+              isOverlayLayout ? CONTENT_OPEN : "",
+            )}
+          >
+            {!chatStarted && (
+              <div className="flex items-center gap-3">
+                <LangGraphLogoSVG className="h-8 flex-shrink-0" />
+                <h1 className="text-2xl font-semibold tracking-tight">Agent Chat</h1>
+              </div>
+            )}
+
+            <div
+              ref={dropRef}
+              className={cn(
+                "bg-muted relative z-10 mb-8 w-full rounded-2xl shadow-xs transition-all",
+                isOverlayLayout ? undefined : CONTENT_CLOSED,
+                dragOver
+                  ? "border-primary border-2 border-dotted"
+                  : "border border-solid",
+              )}
+            >
+              <MultimodalInput
+                input={input}
+                setInput={setInput}
+                onPaste={handlePaste}
+                onSubmit={handleSubmit}
+                contentBlocks={contentBlocks}
+                onRemoveBlock={removeBlock}
+                onFileChange={handleFileUpload}
+                isLoading={isLoading}
+                onStop={() => stream.stop()}
+              />
+            </div>
+          </div>
         </motion.div>
 
         {/* Artifact Sidebar */}
         <ArtifactSidebar
-          onClose={closeArtifact}
+          onClose={() => onSidebarClose({ wait: 150 })}
           open={artifactOpen}
           isSidebarOpen={chatHistoryOpen}
+          blankBackground={blankArtifactBackground}
         />
       </div>
     </div>

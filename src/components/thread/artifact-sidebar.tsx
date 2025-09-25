@@ -15,6 +15,7 @@ export function ArtifactSidebar({
   contentClassName,
   open = true,
   isSidebarOpen = false,
+  blankBackground = false,
 }: {
   onClose: () => void;
   className?: string;
@@ -23,6 +24,12 @@ export function ArtifactSidebar({
   contentClassName?: string;
   open?: boolean;
   isSidebarOpen?: boolean;
+  /**
+   * When true, forces the full-screen background filler to be opaque even while open.
+   * This is used to blank the underlying thread BEFORE any close animation starts,
+   * matching the behavior in supabase-ui where the chat blanks immediately.
+   */
+  blankBackground?: boolean;
 }) {
   const isLargeScreen = useMediaQuery("(min-width: 768px)");
   const [vh, setVh] = useState(0);
@@ -54,6 +61,13 @@ export function ArtifactSidebar({
           initial={{ opacity: 1 }}
           data-testid="artifact"
         >
+          {/* Background filler to blank the underlying thread during animations */}
+          <motion.div
+            className="fixed inset-0 z-10 bg-background pointer-events-none"
+            initial={{ opacity: 1 }}
+            animate={{ opacity: blankBackground ? 1 : 0 }}
+            exit={{ opacity: 1 }}
+          />
 
           <motion.div
             animate={
@@ -89,7 +103,7 @@ export function ArtifactSidebar({
                     },
                   }
             }
-            className="col-start-1 md:col-start-2 flex h-dvh min-w-0 max-w-full flex-col overflow-x-hidden overflow-y-auto border-zinc-200 bg-background md:border-l dark:border-zinc-700 dark:bg-muted pointer-events-auto"
+            className="col-start-1 md:col-start-2 z-20 flex h-dvh min-w-0 max-w-full flex-col overflow-x-hidden overflow-y-auto border-zinc-200 bg-background md:border-l dark:border-zinc-700 dark:bg-muted pointer-events-auto"
             exit={{
               opacity: 0,
               scale: 0.5,
