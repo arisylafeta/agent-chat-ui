@@ -1,11 +1,11 @@
 import { parsePartialJson } from "@langchain/core/output_parsers";
 import { useStreamContext } from "@/providers/Stream";
 import { AIMessage, Checkpoint, Message } from "@langchain/langgraph-sdk";
-import { getContentString } from "../utils";
+import { getContentString } from "@/lib/utils";
 import { BranchSwitcher, CommandBar } from "./shared";
 import { MarkdownText } from "../markdown-text";
 import { LoadExternalComponent } from "@langchain/langgraph-sdk/react-ui";
-import { Writer } from "../../external-ui/writer";
+import { Writer } from "../artifact/writer";
 import { cn } from "@/lib/utils";
 import { ToolCalls, ToolResult } from "./tool-calls";
 import { MessageContentComplex } from "@langchain/core/messages";
@@ -14,7 +14,7 @@ import { isAgentInboxInterruptSchema } from "@/lib/agent-inbox-interrupt";
 import { ThreadView } from "../agent-inbox";
 import { useQueryState, parseAsBoolean } from "nuqs";
 import { GenericInterruptView } from "./generic-interrupt";
-import { useArtifact } from "../artifact";
+import { useArtifact } from "@/components/artifact/artifact";
 
 function CustomComponent({
   message,

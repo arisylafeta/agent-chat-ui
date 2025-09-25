@@ -1,11 +1,11 @@
 import { useStreamContext } from "@/providers/Stream";
 import { Message } from "@langchain/langgraph-sdk";
 import { useState } from "react";
-import { getContentString } from "../utils";
+import { getContentString } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import { BranchSwitcher, CommandBar } from "./shared";
-import { MultimodalPreview } from "@/components/thread/multimodal-preview";
+import { MultimodalPreview } from "@/components/chat/multimodal-preview";
 import { isBase64ContentBlock } from "@/lib/multimodal-utils";
 
 function EditableContent({

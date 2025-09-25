@@ -9,17 +9,17 @@ import { Checkpoint, Message } from "@langchain/langgraph-sdk";
 import { ensureToolCallsHaveResponses } from "@/lib/ensure-tool-responses";
 import { ChatHeader } from "./chat-header";
 import { MultimodalInput } from "./multimodal-input";
-import { Landing } from "./landing";
+import { Landing } from "../landing-page/landing";
 import { ArrowDown } from "lucide-react";
 import { useQueryState, parseAsBoolean } from "nuqs";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
-import ThreadHistory from "./history";
-import { Messages } from "./messages";
+import ThreadHistory from "../sidebar/app-sidebar";
+import { Messages } from "@/components/messages/messages";
 import { toast } from "sonner";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useFileUpload } from "@/hooks/use-file-upload";
-import { useArtifactOpen, useArtifactContext } from "./artifact";
-import { ArtifactSidebar } from "./artifact-sidebar";
+import { useArtifactOpen, useArtifactContext } from "@/components/artifact/artifact";
+import { ArtifactSidebar } from "@/components/artifact/artifact-sidebar";
 
 // Sidebar width parity with supabase-ui (16rem = 256px)
 const SIDEBAR_WIDTH_PX = 256;
@@ -123,7 +123,7 @@ export function Thread() {
   }, [artifactOpen]);
 
   // Coordinate sidebar closing: blank background first, then close after a wait
-  const onSidebarClose = async (opts?: { wait?: number }) => {
+  const onArtifactClose = async (opts?: { wait?: number }) => {
     const waitMs = opts?.wait ?? 150; // small lead time before closing
     setBlankArtifactBackground(true);
     await new Promise((r) => setTimeout(r, waitMs));
@@ -371,7 +371,9 @@ export function Thread() {
                   transition={{ duration: 0.4, ease: "easeOut" }}
                   className={cn(
                     "flex flex-col items-center gap-8 bg-white w-full min-w-0 overflow-x-hidden",
-                    isOverlayLayout ? CONTENT_OPEN : "",
+                    // When artifact overlay is open, use CONTENT_OPEN (px-4 + narrow max width)
+                    // When history sidebar is open (non-overlay), add just horizontal padding
+                    isOverlayLayout ? CONTENT_OPEN : chatHistoryOpen ? "px-4" : "",
                   )}
                 >
                   <div
@@ -420,7 +422,7 @@ export function Thread() {
 
         {/* Artifact Sidebar */}
         <ArtifactSidebar
-          onClose={() => onSidebarClose({ wait: 150 })}
+          onClose={() => onArtifactClose({ wait: 150 })}
           open={artifactOpen}
           isSidebarOpen={chatHistoryOpen}
           blankBackground={blankArtifactBackground}

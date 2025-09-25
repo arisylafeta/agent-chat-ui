@@ -1,7 +1,7 @@
 import React from "react";
 import type { Checkpoint, Message } from "@langchain/langgraph-sdk";
-import { AssistantMessage, AssistantMessageLoading } from "./messages/ai";
-import { HumanMessage } from "./messages/human";
+import { AssistantMessage, AssistantMessageLoading } from "./ai";
+import { HumanMessage } from "./human";
 import { DO_NOT_RENDER_ID_PREFIX } from "@/lib/ensure-tool-responses";
 
 export function Messages(props: {

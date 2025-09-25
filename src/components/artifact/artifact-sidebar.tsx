@@ -6,6 +6,7 @@ import { XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { useQueryState, parseAsBoolean } from "nuqs";
 
 export function ArtifactSidebar({
   onClose,
@@ -14,8 +15,8 @@ export function ArtifactSidebar({
   titleClassName,
   contentClassName,
   open = true,
-  isSidebarOpen = false,
   blankBackground = false,
+  isSidebarOpen = false,
 }: {
   onClose: () => void;
   className?: string;
@@ -23,17 +24,25 @@ export function ArtifactSidebar({
   titleClassName?: string;
   contentClassName?: string;
   open?: boolean;
-  isSidebarOpen?: boolean;
   /**
    * When true, forces the full-screen background filler to be opaque even while open.
    * This is used to blank the underlying thread BEFORE any close animation starts,
    * matching the behavior in supabase-ui where the chat blanks immediately.
    */
   blankBackground?: boolean;
+  /**
+   * Indicates if the thread history sidebar is currently open. When the artifact tries to open
+   * and this is true, we will proactively close the thread history first.
+   */
+  isSidebarOpen?: boolean;
 }) {
   const isLargeScreen = useMediaQuery("(min-width: 768px)");
   const [vh, setVh] = useState(0);
   const bb = useArtifactBoundingBox();
+  const [, setChatHistoryOpen] = useQueryState(
+    "chatHistoryOpen",
+    parseAsBoolean.withDefault(false),
+  );
 
   useEffect(() => {
     const onResize = () => {
@@ -47,6 +56,18 @@ export function ArtifactSidebar({
     window.addEventListener("resize", onResize);
     return () => window.removeEventListener("resize", onResize);
   }, []);
+
+  // If the artifact is opening while the thread history sidebar is open,
+  // close the thread history first so the artifact has clear space.
+  useEffect(() => {
+    if (open && isSidebarOpen) {
+      try {
+        setChatHistoryOpen(false);
+      } catch {
+        // no-op
+      }
+    }
+  }, [open, isSidebarOpen, setChatHistoryOpen]);
 
   return (
     <AnimatePresence>

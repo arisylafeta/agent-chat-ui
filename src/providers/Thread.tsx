@@ -1,7 +1,5 @@
 import { validate } from "uuid";
-import { getApiKey } from "@/lib/api-key";
 import { Thread } from "@langchain/langgraph-sdk";
-import { useQueryState } from "nuqs";
 import {
   createContext,
   useContext,
@@ -34,14 +32,17 @@ function getThreadSearchMetadata(
 }
 
 export function ThreadProvider({ children }: { children: ReactNode }) {
-  const [apiUrl] = useQueryState("apiUrl");
-  const [assistantId] = useQueryState("assistantId");
   const [threads, setThreads] = useState<Thread[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(false);
 
   const getThreads = useCallback(async (): Promise<Thread[]> => {
+    // Mirror StreamProvider env config so only threadId is URL-driven
+    const apiUrl: string = process.env.NEXT_PUBLIC_API_URL || "http://localhost:2024";
+    const assistantId: string = process.env.NEXT_PUBLIC_ASSISTANT_ID || "agent";
+    const apiKey: string | undefined = process.env.LANGGRAPH_API_KEY || undefined;
+
     if (!apiUrl || !assistantId) return [];
-    const client = createClient(apiUrl, getApiKey() ?? undefined);
+    const client = createClient(apiUrl, apiKey);
 
     const threads = await client.threads.search({
       metadata: {
@@ -51,7 +52,7 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
     });
 
     return threads;
-  }, [apiUrl, assistantId]);
+  }, []);
 
   const value = {
     getThreads,

@@ -1,6 +1,6 @@
 import { Button } from "../ui/button";
 import { PanelRightOpen, PanelRightClose, Plus } from "lucide-react";
-import { melia } from "@/app/fonts";
+import Image from "next/image";
 
 export function ChatHeader(props: {
   chatStarted: boolean;
@@ -45,15 +45,18 @@ export function ChatHeader(props: {
           aria-label="New Chat"
         >
           <Plus className="size-5" />
-          <span className="md:sr-only">New Chat</span>
+
         </Button>
       </div>
 
       {/* Right: Wordmark */}
       <div className="ml-auto">
-        <span className={`${melia.className} select-none px-2 text-lg leading-none`}>
-          Reoutfit
-        </span>
+          <Image
+          src="/logo.png"
+          alt="Reoutfit"
+          width={40}
+          height={40}
+          />
       </div>
     </header>
   );

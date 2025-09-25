@@ -1,8 +1,7 @@
 import React, { FormEvent } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { LangGraphLogoSVG } from "../icons/langgraph";
-import { MultimodalInput } from "./multimodal-input";
+import { MultimodalInput } from "../chat/multimodal-input";
 
 export function Landing(props: {
   contentClassName: string;
@@ -53,8 +52,7 @@ export function Landing(props: {
             exit={{ opacity: 0, y: 20 }}
             transition={{ duration: 0.3, ease: "easeOut" }}
           >
-            <LangGraphLogoSVG className="h-8 flex-shrink-0" />
-            <h1 className="text-2xl font-semibold tracking-tight">Agent Chat</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">CICAMACA IS HERE BABY</h1>
           </motion.div>
           <motion.div
             ref={dropRef}
