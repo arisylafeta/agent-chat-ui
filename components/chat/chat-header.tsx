@@ -9,6 +9,7 @@ export function ChatHeader(props: {
   chatHistoryOpen: boolean;
   onToggleSidebar: () => void;
   onNewThread: () => void;
+  opened?: boolean;
 }) {
   const {
     chatStarted: _chatStarted,
@@ -18,6 +19,7 @@ export function ChatHeader(props: {
     onToggleSidebar,
     onNewThread,
   } = props;
+  const opened = props.opened ?? false;
 
   if (isOverlayLayout) return null;
 
@@ -25,18 +27,20 @@ export function ChatHeader(props: {
     <header className="sticky top-0 z-10 flex items-center gap-2 bg-background px-2 py-1.5 md:px-2">
       {/* Left: Buttons (sidebar toggle first with border, then New Chat) */}
       <div className="flex items-center gap-2">
-        <TooltipIconButton
-          tooltip="Toggle sidebar"
-          aria-label="Toggle sidebar"
-          onClick={onToggleSidebar}
-          variant="outline"
-        >
-          {chatHistoryOpen ? (
-            <PanelRightOpen className="size-5" />
-          ) : (
-            <PanelRightClose className="size-5" />
-          )}
-        </TooltipIconButton>
+        {!opened && (
+          <TooltipIconButton
+            tooltip="Toggle sidebar"
+            aria-label="Toggle sidebar"
+            onClick={onToggleSidebar}
+            variant="outline"
+          >
+            {chatHistoryOpen ? (
+              <PanelRightOpen className="size-5" />
+            ) : (
+              <PanelRightClose className="size-5" />
+            )}
+          </TooltipIconButton>
+        )}
 
         <TooltipIconButton
           tooltip="New Chat"
@@ -50,12 +54,14 @@ export function ChatHeader(props: {
 
       {/* Right: Wordmark */}
       <div className="ml-auto">
+        {!opened && (
           <Image
-          src="/logo.png"
-          alt="Reoutfit"
-          width={40}
-          height={40}
+            src="/logo.png"
+            alt="Reoutfit"
+            width={36}
+            height={36}
           />
+        )}
       </div>
     </header>
   );

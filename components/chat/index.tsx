@@ -19,6 +19,7 @@ import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useFileUpload } from "../../hooks/use-file-upload";
 import { useArtifactOpen, useArtifactContext } from "../artifact/artifact";
 import { ArtifactSidebar } from "../artifact/artifact-sidebar";
+import Suggested from "./suggested";
 
 // Sidebar width parity with supabase-ui (16rem = 256px)
 const SIDEBAR_WIDTH_PX = 256;
@@ -121,8 +122,8 @@ export function Thread() {
     }
   }, [artifactOpen]);
 
-  // Coordinate sidebar closing: blank background first, then close after a wait
-  const onSidebarClose = async (opts?: { wait?: number }) => {
+  // Coordinate artifact closing: blank background first, then close after a wait
+  const onArtifactClose = async (opts?: { wait?: number }) => {
     const waitMs = opts?.wait ?? 150; // small lead time before closing
     setBlankArtifactBackground(true);
     await new Promise((r) => setTimeout(r, waitMs));
@@ -172,27 +173,6 @@ export function Thread() {
       // no-op
     }
   }, [stream.error]);
-
-  // Persist sidebar open/closed state similar to supabase-ui (cookie/local storage)
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("sidebar_state");
-      if (stored !== null) {
-        setChatHistoryOpen(stored === "true");
-      }
-    } catch {
-      // no-op
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem("sidebar_state", String(chatHistoryOpen));
-    } catch {
-      // no-op
-    }
-  }, [chatHistoryOpen]);
 
   // TODO: this should be part of the useStream hook
   const prevMessageLength = useRef(0);
@@ -317,6 +297,7 @@ export function Thread() {
             chatHistoryOpen={chatHistoryOpen}
             onToggleSidebar={() => setChatHistoryOpen((p) => !p)}
             onNewThread={() => setThreadId(null)}
+            opened={chatHistoryOpen}
           />
 
           <StickToBottom className="relative flex-1 overflow-hidden no-scrollbar">
@@ -341,31 +322,28 @@ export function Thread() {
                   handleRegenerate={handleRegenerate}
                 />
               }
-              footer={
-                <div className="absolute bottom-4 left-0 right-0 pointer-events-none">
+            />
+              <div className="absolute bottom-4 left-0 right-0 pointer-events-none">
                   <div className={cn(isOverlayLayout ? CONTENT_OPEN : CONTENT_CLOSED)}>
                     <div className="flex justify-center pointer-events-auto">
                       <ScrollToBottom className="animate-in fade-in-0 zoom-in-95" />
                     </div>
                   </div>
                 </div>
-              }
-            />
           </StickToBottom>
 
+          <div className="absolute inset-0 m-auto md:px-10 px-3 flex items-center justify-center pointer-events-none">
+            {!chatStarted && (
+              <Suggested/>
+            )}
+          </div>
           {/* Static bottom input panel (outside scroll container) */}
           <div
             className={cn(
-              "flex flex-col items-center gap-8 bg-white w-full min-w-0 overflow-x-hidden",
-              isOverlayLayout ? CONTENT_OPEN : chatHistoryOpen ? "px-4" : "",
+              "flex flex-col items-center gap-8 bg-white w-full min-w-0 overflow-x-hidden px-3 sm:px-4",
+              isOverlayLayout ? CONTENT_OPEN : "",
             )}
           >
-            {!chatStarted && (
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-semibold tracking-tight">Agent Chat</h1>
-              </div>
-            )}
-
             <div
               ref={dropRef}
               className={cn(
@@ -393,7 +371,7 @@ export function Thread() {
 
         {/* Artifact Sidebar */}
         <ArtifactSidebar
-          onClose={() => onSidebarClose({ wait: 150 })}
+          onClose={() => onArtifactClose({ wait: 150 })}
           open={artifactOpen}
           isSidebarOpen={chatHistoryOpen}
           blankBackground={blankArtifactBackground}

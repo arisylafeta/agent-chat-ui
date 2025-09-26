@@ -1,3 +1,4 @@
+'use client';
 import { validate } from "uuid";
 import { Thread } from "@langchain/langgraph-sdk";
 import {

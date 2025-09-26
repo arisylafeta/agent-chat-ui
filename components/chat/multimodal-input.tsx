@@ -27,7 +27,7 @@ export function MultimodalInput(props: {
   } = props;
 
   return (
-    <form onSubmit={onSubmit} className="grid grid-rows-[1fr_auto] gap-2 w-full">
+    <form onSubmit={onSubmit} className="grid grid-rows-[1fr_auto] gap-2 w-full px-2 sm:px-0">
       <ContentBlocksPreview blocks={contentBlocks as any} onRemove={onRemoveBlock} />
 
       <textarea
@@ -101,3 +101,4 @@ export function MultimodalInput(props: {
     </form>
   );
 }
+

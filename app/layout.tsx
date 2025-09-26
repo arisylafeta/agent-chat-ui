@@ -3,6 +3,7 @@ import "./globals.css";
 import { Inter } from "next/font/google";
 import React from "react";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -26,7 +27,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <NuqsAdapter>{children}</NuqsAdapter>
+        <SidebarProvider>
+          <NuqsAdapter>{children}</NuqsAdapter>
+        </SidebarProvider>
       </body>
     </html>
   );

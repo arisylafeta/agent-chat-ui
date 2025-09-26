@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import { useThreads } from "../../providers/Thread";
@@ -5,6 +7,7 @@ import { Thread } from "@langchain/langgraph-sdk";
 import { useEffect } from "react";
 import { useQueryState } from "nuqs";
 import { getContentString } from "../../lib/utils";
+
 
 function ThreadList({
   threads,
@@ -16,7 +19,7 @@ function ThreadList({
   const [threadId, setThreadId] = useQueryState("threadId");
 
   return (
-    <div className="flex h-full w-full flex-col items-start justify-start gap-2 overflow-y-scroll [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-track]:bg-transparent">
+    <div className="flex h-full w-full flex-col items-start justify-start gap-1 overflow-y-scroll [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-track]:bg-transparent">
       {threads.map((t) => {
         let itemText = t.thread_id;
         if (
@@ -33,7 +36,7 @@ function ThreadList({
           <div key={t.thread_id} className="w-full px-1">
             <Button
               variant="ghost"
-              className="w-[280px] items-start justify-start text-left font-normal"
+              className="w-full items-start justify-start text-left font-normal text-xs leading-tight py-1.5 h-auto px-2"
               onClick={(e) => {
                 e.preventDefault();
                 onThreadClick?.(t.thread_id);
@@ -41,7 +44,7 @@ function ThreadList({
                 setThreadId(t.thread_id);
               }}
            >
-              <p className="truncate text-ellipsis">{itemText}</p>
+              <p className="truncate text-ellipsis text-xs">{itemText}</p>
             </Button>
           </div>
         );
@@ -52,9 +55,9 @@ function ThreadList({
 
 function ThreadHistoryLoading() {
   return (
-    <div className="flex h-full w-full flex-col items-start justify-start gap-2 overflow-y-scroll [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-track]:bg-transparent">
+    <div className="flex h-full w-full flex-col items-start justify-start gap-1 overflow-y-scroll [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-track]:bg-transparent">
       {Array.from({ length: 30 }).map((_, i) => (
-        <Skeleton key={`skeleton-${i}`} className="h-10 w-[280px]" />
+        <Skeleton key={`skeleton-${i}`} className="h-6 w-full" />
       ))}
     </div>
   );
