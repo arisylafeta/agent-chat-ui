@@ -104,7 +104,7 @@ export function Thread() {
   // Common class tokens (reduces duplication)
   const SCROLL_BASE = "absolute inset-0 min-w-0 overflow-x-hidden overflow-y-scroll touch-pan-y overscroll-behavior-contain -webkit-overflow-scrolling-touch no-scrollbar scrollbar-none";
   const CONTENT_BASE = "pt-6 pb-8 flex flex-col gap-4 w-full min-w-0 overflow-x-hidden";
-  const CONTENT_OPEN = "px-4";
+  const CONTENT_OPEN = "px-4 md:max-w-[400px]";
   const CONTENT_CLOSED = "max-w-3xl mx-auto";
   const SCROLL_PADDING_RIGHT_OPEN = "md:pr-[420px]";
 
@@ -253,7 +253,7 @@ export function Thread() {
     <div className="flex h-screen w-full overflow-hidden">
       <div className="relative hidden md:flex">
         <motion.div
-          className="absolute z-20 h-full overflow-hidden border-r bg-white"
+          className="absolute z-20 h-full overflow-hidden border-r bg-white-soft"
           style={{ width: SIDEBAR_WIDTH_PX }}
           animate={
             isLargeScreen

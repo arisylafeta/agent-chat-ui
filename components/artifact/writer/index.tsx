@@ -36,8 +36,8 @@ export function Writer(props: WriterProps) {
       <div
         onClick={() => setOpen((o: boolean) => !o)}
         className={cn(
-          "group w-full min-w-0 cursor-pointer overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-300",
-          isOpen ? "p-3 md:p-3 rounded-xl shadow-xs hover:shadow-xs" : "p-5 md:p-6 hover:bg-gray-50 hover:shadow-md",
+          "group w-full min-w-0 cursor-pointer overflow-hidden rounded-2xl border border-gray-200 bg-white-soft shadow-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-300",
+          isOpen ? "p-3 md:p-3 rounded-xl shadow-xs hover:shadow-xs" : "p-5 md:p-6 hover:bg-gray-soft hover:shadow-md",
         )}
         role="button"
         aria-label="Open essay artifact"
