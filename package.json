@@ -22,6 +22,8 @@
     "test:ui": "playwright test --ui"
   },
   "dependencies": {
+    "@copilotkit/react-core": "^1.10.4",
+    "@copilotkit/react-ui": "^1.10.4",
     "@langchain/core": "^0.3.44",
     "@langchain/langgraph": "^0.2.63",
     "@langchain/langgraph-sdk": "^0.1.0",

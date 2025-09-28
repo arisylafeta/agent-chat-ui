@@ -1,6 +1,7 @@
 import React, { FormEvent } from "react";
 import { Button } from "../ui/button";
-import { Camera, ArrowUp, Square } from "lucide-react";
+import { Camera, ArrowUp, Square, Paperclip, Image as ImageIcon } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { ContentBlocksPreview } from "./contentblocks-preview";
 
 export function MultimodalInput(props: {
@@ -52,25 +53,56 @@ export function MultimodalInput(props: {
       />
 
       <div className="flex items-center gap-4 p-2 pt-4">
-        {/* Camera icon button centered inside a circular button */}
-        <Button
-          type="button"
-          variant="ghost"
-          className="aspect-square h-8 rounded-full p-1.5 transition-colors hover:bg-accent"
-          aria-label="Upload file"
-          onClick={() => {
-            const inputEl = document.getElementById("file-input") as HTMLInputElement | null;
-            inputEl?.click();
-          }}
-        >
-          <Camera className="h-5 w-5 text-gray-600" aria-hidden />
-        </Button>
+        {/* Attachment menu (paperclip) with Gallery and Camera options */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              className="aspect-square h-8 rounded-full p-1.5 transition-colors hover:bg-accent"
+              aria-label="Attach"
+            >
+              <Paperclip className="h-5 w-5 text-gray-600" aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem
+              onSelect={(e) => {
+                e.preventDefault();
+                const inputEl = document.getElementById("file-input-gallery") as HTMLInputElement | null;
+                inputEl?.click();
+              }}
+            >
+              <ImageIcon className="h-4 w-4" />
+              <span>Gallery</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={(e) => {
+                e.preventDefault();
+                const inputEl = document.getElementById("file-input-camera") as HTMLInputElement | null;
+                inputEl?.click();
+              }}
+            >
+              <Camera className="h-4 w-4" />
+              <span>Camera</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {/* Hidden inputs for gallery and camera */}
         <input
-          id="file-input"
+          id="file-input-gallery"
           type="file"
           onChange={onFileChange}
           multiple
           accept="image/jpeg,image/png,image/gif,image/webp,application/pdf"
+          className="sr-only"
+        />
+        <input
+          id="file-input-camera"
+          type="file"
+          onChange={onFileChange}
+          accept="image/*"
+          capture="environment"
           className="sr-only"
         />
 
