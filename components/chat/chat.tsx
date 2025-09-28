@@ -1,12 +1,8 @@
-import { v4 as uuidv4 } from "uuid";
 import { ReactNode, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { cn } from "../../lib/utils";
 import { useStreamContext } from "../../providers/Stream";
-import { useState, FormEvent } from "react";
 import { Button } from "../ui/button";
-import { Checkpoint, Message } from "@langchain/langgraph-sdk";
-import { ensureToolCallsHaveResponses } from "../../lib/ensure-tool-responses";
 import { ChatHeader } from "./chat-header";
 import { MultimodalInput } from "./multimodal-input";
 import { ArrowDown } from "lucide-react";
@@ -17,14 +13,13 @@ import { Messages } from "../messages/messages";
 import { toast } from "sonner";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { useFileUpload } from "../../hooks/use-file-upload";
-import { useArtifactOpen, useArtifactContext } from "../artifact/artifact";
 import { ArtifactSidebar } from "../artifact/artifact-sidebar";
 import Suggested from "./suggested";
+import { useThreadLayout } from "../../hooks/useThreadLayout";
+import { useChatSubmission } from "../../hooks/useChatSubmission";
 
 // Sidebar width parity with supabase-ui (16rem = 256px)
 const SIDEBAR_WIDTH_PX = 256;
-// Artifact exit animation delay to keep layout stable during close (matches supabase-ui)
-const ARTIFACT_EXIT_DELAY_MS = 0;
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -69,22 +64,21 @@ function ScrollToBottom(props: { className?: string }) {
 }
 
 export function Thread() {
-  const [artifactContext, setArtifactContext] = useArtifactContext();
-  const [artifactOpen, closeArtifact] = useArtifactOpen();
-  
-  // Delayed state for chat width to prevent glitchy animation during artifact close
-  const [artifactOpenForLayout, setArtifactOpenForLayout] = useState(artifactOpen);
-  // Controls when the overlay background inside ArtifactSidebar should be opaque
-  // while the sidebar is still open, to blank the underlying thread before close.
-  const [blankArtifactBackground, setBlankArtifactBackground] = useState(false);
+  const {
+    artifactContext,
+    setArtifactContext,
+    artifactOpen,
+    closeArtifact,
+    artifactOpenForLayout,
+    blankArtifactBackground,
+    onArtifactClose,
+  } = useThreadLayout();
 
   const [threadId, _setThreadId] = useQueryState("threadId");
   const [chatHistoryOpen, setChatHistoryOpen] = useQueryState(
     "chatHistoryOpen",
     parseAsBoolean.withDefault(false),
   );
-  // Removed Hide Tool Calls control and query state
-  const [input, setInput] = useState("");
   const {
     contentBlocks,
     setContentBlocks,
@@ -95,7 +89,19 @@ export function Thread() {
     dragOver,
     handlePaste,
   } = useFileUpload();
-  const [firstTokenReceived, setFirstTokenReceived] = useState(false);
+  const stream = useStreamContext();
+  const {
+    input,
+    setInput,
+    firstTokenReceived,
+    handleSubmit,
+    handleRegenerate,
+  } = useChatSubmission({
+    stream,
+    artifactContext,
+    contentBlocks,
+    setContentBlocks,
+  });
   const isLargeScreen = useMediaQuery("(min-width: 768px)");
 
   // Alias for readability in layout decisions
@@ -108,31 +114,6 @@ export function Thread() {
   const CONTENT_CLOSED = "max-w-3xl mx-auto";
   const SCROLL_PADDING_RIGHT_OPEN = "md:pr-[420px]";
 
-  // Sync the delayed layout state with artifact open/close
-  useEffect(() => {
-    if (artifactOpen) {
-      // Open immediately
-      setArtifactOpenForLayout(true);
-    } else {
-      // Close with delay to match Supabase animation timing
-      const timer = setTimeout(() => {
-        setArtifactOpenForLayout(false);
-      }, ARTIFACT_EXIT_DELAY_MS);
-      return () => clearTimeout(timer);
-    }
-  }, [artifactOpen]);
-
-  // Coordinate artifact closing: blank background first, then close after a wait
-  const onArtifactClose = async (opts?: { wait?: number }) => {
-    const waitMs = opts?.wait ?? 150; // small lead time before closing
-    setBlankArtifactBackground(true);
-    await new Promise((r) => setTimeout(r, waitMs));
-    closeArtifact();
-    // Reset the blanking flag after exit likely completes
-    setTimeout(() => setBlankArtifactBackground(false), 700);
-  };
-
-  const stream = useStreamContext();
   const messages = stream.messages;
   const isLoading = stream.isLoading;
 
@@ -173,76 +154,6 @@ export function Thread() {
       // no-op
     }
   }, [stream.error]);
-
-  // TODO: this should be part of the useStream hook
-  const prevMessageLength = useRef(0);
-  useEffect(() => {
-    if (
-      messages.length !== prevMessageLength.current &&
-      messages?.length &&
-      messages[messages.length - 1].type === "ai"
-    ) {
-      setFirstTokenReceived(true);
-    }
-
-    prevMessageLength.current = messages.length;
-  }, [messages]);
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    if ((input.trim().length === 0 && contentBlocks.length === 0) || isLoading)
-      return;
-    setFirstTokenReceived(false);
-
-    const newHumanMessage: Message = {
-      id: uuidv4(),
-      type: "human",
-      content: [
-        ...(input.trim().length > 0 ? [{ type: "text", text: input }] : []),
-        ...contentBlocks,
-      ] as Message["content"],
-    };
-
-    const toolMessages = ensureToolCallsHaveResponses(stream.messages);
-
-    const context =
-      Object.keys(artifactContext).length > 0 ? artifactContext : undefined;
-
-    stream.submit(
-      { messages: [...toolMessages, newHumanMessage], context },
-      {
-        streamMode: ["values"],
-        streamSubgraphs: true,
-        streamResumable: true,
-        optimisticValues: (prev) => ({
-          ...prev,
-          context,
-          messages: [
-            ...(prev.messages ?? []),
-            ...toolMessages,
-            newHumanMessage,
-          ],
-        }),
-      },
-    );
-
-    setInput("");
-    setContentBlocks([]);
-  };
-
-  const handleRegenerate = (
-    parentCheckpoint: Checkpoint | null | undefined,
-  ) => {
-    // Do this so the loading state is correct
-    prevMessageLength.current = prevMessageLength.current - 1;
-    setFirstTokenReceived(false);
-    stream.submit(undefined, {
-      checkpoint: parentCheckpoint,
-      streamMode: ["values"],
-      streamSubgraphs: true,
-      streamResumable: true,
-    });
-  };
 
   const chatStarted = !!threadId || !!messages.length;
   const hasNoAIOrToolMessages = !messages.find(
@@ -340,14 +251,14 @@ export function Thread() {
           {/* Static bottom input panel (outside scroll container) */}
           <div
             className={cn(
-              "flex flex-col items-center gap-8 bg-white w-full min-w-0 overflow-x-hidden px-3 sm:px-4",
+              "flex flex-col items-center gap-8 bg-background w-full min-w-0 overflow-x-hidden px-3 sm:px-4",
               isOverlayLayout ? CONTENT_OPEN : "",
             )}
           >
             <div
               ref={dropRef}
               className={cn(
-                "bg-muted relative z-10 mb-8 w-full rounded-2xl shadow-xs transition-all",
+                "bg-background relative z-10 mb-8 w-full rounded-2xl shadow-xs transition-all",
                 isOverlayLayout ? undefined : CONTENT_CLOSED,
                 dragOver
                   ? "border-primary border-2 border-dotted"

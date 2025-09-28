@@ -85,7 +85,7 @@ export async function requestPasswordReset(currentState: { message: string; ok?:
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     // Align with existing OAuth redirect target style
-    redirectTo: `${process.env.NEXT_PUBLIC_URL}/auth/callback`,
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
   })
 
   if (error) {

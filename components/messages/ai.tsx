@@ -5,7 +5,7 @@ import { getContentString } from "../../lib/utils";
 import { BranchSwitcher, CommandBar } from "./shared";
 import { MarkdownText } from "../markdown-text";
 import { LoadExternalComponent } from "@langchain/langgraph-sdk/react-ui";
-import { Writer } from "../artifact/writer/index";
+import { Writer } from "../artifact/writer/writer";
 import { cn } from "../../lib/utils";
 import { ToolCalls, ToolResult } from "./tool-calls";
 import { MessageContentComplex } from "@langchain/core/messages";
