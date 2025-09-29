@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useStreamContext } from "@/providers/Stream";
@@ -19,45 +19,23 @@ import { useQueryState } from "nuqs";
 import ChatSidebar from "@/components/sidebar/app-sidebar";
 
 
-function StickyToBottomContent(props: {
-  content: ReactNode;
-  footer?: ReactNode;
-  className?: string;
-  contentClassName?: string;
-}) {
-  const context = useStickToBottomContext();
-  return (
-    <div
-      id="chat-scroll"
-      ref={context.scrollRef}
-      style={{ width: "100%", height: "100%", overflowAnchor: "none" }}
-      className={props.className}
-    >
-      <div
-        ref={context.contentRef}
-        className={props.contentClassName}
-      >
-        {props.content}
-      </div>
-
-      {props.footer}
-    </div>
-  );
-}
-
-function ScrollToBottom(props: { className?: string }) {
+function ScrollToBottom() {
   const { isAtBottom, scrollToBottom } = useStickToBottomContext();
 
   if (isAtBottom) return null;
+  
   return (
-    <Button
-      variant="outline"
-      className={props.className}
-      onClick={() => scrollToBottom()}
-    >
-      <ArrowDown className="h-4 w-4" />
-      <span>Scroll to bottom</span>
-    </Button>
+    <div className="absolute bottom-20 left-1/2 -translate-x-1/2 pointer-events-auto">
+      <Button
+        variant="outline"
+        size="sm"
+        className="shadow-lg animate-in fade-in-0 zoom-in-95"
+        onClick={() => scrollToBottom()}
+      >
+        <ArrowDown className="h-4 w-4" />
+        <span className="sr-only">Scroll to bottom</span>
+      </Button>
+    </div>
   );
 }
 
@@ -67,8 +45,6 @@ export function Thread() {
     setArtifactContext,
     artifactOpen,
     closeArtifact,
-    artifactOpenForLayout,
-    blankArtifactBackground,
     onArtifactClose,
   } = useChatArtifact();
 
@@ -104,16 +80,6 @@ export function Thread() {
     contentBlocks,
     setContentBlocks,
   });
-
-  // Alias for readability in layout decisions
-  const isOverlayLayout = artifactOpenForLayout;
-
-  // Common class tokens (reduces duplication)
-  const SCROLL_BASE = "absolute inset-0 min-w-0 overflow-x-hidden overflow-y-scroll touch-pan-y overscroll-behavior-contain -webkit-overflow-scrolling-touch no-scrollbar scrollbar-none";
-  const CONTENT_BASE = "pt-6 pb-8 flex flex-col gap-4 w-full min-w-0 overflow-x-hidden";
-  const CONTENT_OPEN = "px-4 md:max-w-[400px]";
-  const CONTENT_CLOSED = "max-w-3xl mx-auto";
-  const SCROLL_PADDING_RIGHT_OPEN = "md:pr-[420px]";
 
   const messages = stream.messages;
   const isLoading = stream.isLoading;
@@ -183,7 +149,7 @@ export function Thread() {
         >
           <ChatHeader
             chatStarted={chatStarted}
-            isOverlayLayout={artifactOpenForLayout}
+            isOverlayLayout={artifactOpen}
             isLargeScreen={isLargeScreen}
             chatHistoryOpen={chatHistoryOpen}
             onToggleSidebar={toggleSidebar}
@@ -191,19 +157,20 @@ export function Thread() {
             opened={chatHistoryOpen}
           />
 
-          <StickToBottom className="relative flex-1 overflow-hidden no-scrollbar">
-            <StickyToBottomContent
+          <StickToBottom className="relative flex-1 overflow-hidden">
+            <div
               className={cn(
-                SCROLL_BASE,
-                isOverlayLayout ? undefined : "px-4",
-                isOverlayLayout && SCROLL_PADDING_RIGHT_OPEN,
+                "absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain",
+                artifactOpen ? "md:pr-[420px]" : "px-4",
                 !chatStarted && "mt-[25vh] flex flex-col items-stretch",
               )}
-              contentClassName={cn(
-                CONTENT_BASE,
-                isOverlayLayout ? CONTENT_OPEN : CONTENT_CLOSED,
-              )}
-              content={
+            >
+              <div
+                className={cn(
+                  "pt-6 pb-8 flex flex-col gap-4 w-full min-w-0",
+                  artifactOpen ? "px-4 md:max-w-[400px]" : "max-w-3xl mx-auto",
+                )}
+              >
                 <Messages
                   messages={messages}
                   isLoading={isLoading}
@@ -212,15 +179,9 @@ export function Thread() {
                   streamInterrupt={stream.interrupt}
                   handleRegenerate={handleRegenerate}
                 />
-              }
-            />
-              <div className="absolute bottom-4 left-0 right-0 pointer-events-none">
-                  <div className={cn(isOverlayLayout ? CONTENT_OPEN : CONTENT_CLOSED)}>
-                    <div className="flex justify-center pointer-events-auto">
-                      <ScrollToBottom className="animate-in fade-in-0 zoom-in-95" />
-                    </div>
-                  </div>
-                </div>
+              </div>
+            </div>
+            <ScrollToBottom />
           </StickToBottom>
 
           <div className="absolute inset-0 m-auto md:px-10 px-3 flex items-center justify-center pointer-events-none">
@@ -232,16 +193,16 @@ export function Thread() {
           <div
             className={cn(
               "flex flex-col items-center gap-8 bg-background w-full min-w-0 overflow-x-hidden px-3 sm:px-4",
-              isOverlayLayout ? CONTENT_OPEN : "",
+              artifactOpen ? "px-4 md:max-w-[400px]" : "",
             )}
           >
             <div
               ref={dropRef}
               className={cn(
                 "bg-background relative z-10 mb-8 w-full rounded-2xl shadow-xs transition-all",
-                isOverlayLayout ? undefined : CONTENT_CLOSED,
+                artifactOpen ? "max-w-3xl mx-auto" : "",
                 dragOver
-                  ? "border-primary border-2 border-dotted"
+                  ? "border-primary border-2 border-dashed"
                   : "border border-solid",
               )}
             >
@@ -265,7 +226,7 @@ export function Thread() {
           onClose={() => onArtifactClose({ wait: 150 })}
           open={artifactOpen}
           isSidebarOpen={chatHistoryOpen}
-          blankBackground={blankArtifactBackground}
+          blankBackground={false}
         />
       </div>
     </div>

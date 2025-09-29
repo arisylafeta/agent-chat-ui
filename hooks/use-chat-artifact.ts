@@ -1,38 +1,16 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { useArtifactContext, useArtifactOpen } from "../components/artifact/artifact";
-
-interface OnArtifactCloseOptions {
-  wait?: number;
-}
 
 export function useChatArtifact() {
   const [artifactContext, setArtifactContext] = useArtifactContext();
   const [artifactOpen, closeArtifact] = useArtifactOpen();
 
-  const [artifactOpenForLayout, setArtifactOpenForLayout] = useState(artifactOpen);
-  const [blankArtifactBackground, setBlankArtifactBackground] = useState(false);
-
-  useEffect(() => {
-    if (artifactOpen) {
-      setArtifactOpenForLayout(true);
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      setArtifactOpenForLayout(false);
-    }, 0);
-
-    return () => clearTimeout(timer);
-  }, [artifactOpen]);
-
-  const onArtifactClose = useCallback(async (opts?: OnArtifactCloseOptions) => {
+  const onArtifactClose = useCallback(async (opts?: { wait?: number }) => {
     const waitMs = opts?.wait ?? 150;
-    setBlankArtifactBackground(true);
-
+    
+    // Add a small delay before closing for smooth UX
     await new Promise((resolve) => setTimeout(resolve, waitMs));
     closeArtifact();
-
-    setTimeout(() => setBlankArtifactBackground(false), 700);
   }, [closeArtifact]);
 
   return {
@@ -40,8 +18,6 @@ export function useChatArtifact() {
     setArtifactContext,
     artifactOpen,
     closeArtifact,
-    artifactOpenForLayout,
-    blankArtifactBackground,
     onArtifactClose,
   };
 }
