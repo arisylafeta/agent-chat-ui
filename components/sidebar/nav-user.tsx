@@ -30,12 +30,7 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu"
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar"
+import { Button } from "@/components/ui/button"
 
 import { createClient } from "@/utils/supabase/client"
 import { logout } from "@/app/(auth)/actions"
@@ -48,8 +43,12 @@ function getInitials(name?: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
-export function NavUser() {
-  const { isMobile } = useSidebar()
+interface NavUserProps {
+  isLargeScreen: boolean;
+}
+
+export function NavUser({ isLargeScreen }: NavUserProps) {
+  const isMobile = !isLargeScreen
   const { theme, setTheme } = useTheme()
   const [profile, setProfile] = React.useState<{
     name: string
@@ -88,14 +87,12 @@ export function NavUser() {
 
   // User menu (full view only)
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          className="w-full h-auto p-2 justify-start data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
+        >
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage src={display.avatar} alt={display.name} />
                 <AvatarFallback className="rounded-lg">{getInitials(display.name)}</AvatarFallback>
@@ -104,9 +101,9 @@ export function NavUser() {
                 <span className="truncate font-semibold">{display.name}</span>
                 <span className="truncate text-xs">{display.email}</span>
               </span>
-              <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
+              <ChevronsUpDown className="ml-auto size-4" />
+        </Button>
+      </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
             side={isMobile ? "bottom" : "right"}
@@ -172,9 +169,7 @@ export function NavUser() {
               </form>
             </DropdownMenuItem>
           </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
+    </DropdownMenu>
   )
 }
 

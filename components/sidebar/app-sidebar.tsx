@@ -1,6 +1,5 @@
-import { useQueryState, parseAsBoolean } from "nuqs";
 import { Sheet, SheetContent } from "../ui/sheet";
-import { useMediaQuery } from "../../hooks/useMediaQuery";
+import { motion } from "framer-motion";
 import ChatHistory from "./chat-history";
 import { NavUser } from "./nav-user";
 import Image from "next/image";
@@ -8,16 +7,19 @@ import Link from "next/link";
 import { PanelRightOpen, PanelRightClose, Search, ShoppingBag, BookOpen, Archive, Sparkles } from "lucide-react";
 import { TooltipIconButton } from "../ui/tooltip-icon-button";
 
-export default function ThreadHistory() {
-  const isLargeScreen = useMediaQuery("(min-width: 768px)");
-  const [chatHistoryOpen, setChatHistoryOpen] = useQueryState(
-    "chatHistoryOpen",
-    parseAsBoolean.withDefault(false),
-  );
+interface ChatSidebarProps {
+  chatHistoryOpen: boolean;
+  toggleSidebar: () => void;
+  isLargeScreen: boolean;
+  sidebarMotionProps: any;
+  SIDEBAR_WIDTH_PX: number;
+}
+
+export default function ChatSidebar({ chatHistoryOpen, toggleSidebar, isLargeScreen, sidebarMotionProps, SIDEBAR_WIDTH_PX }: ChatSidebarProps) {
 
   return (
     <>
-      <div className="shadow-inner-right hidden h-screen w-full shrink-0 bg-secondary md:flex">
+      <motion.div {...sidebarMotionProps}>
         <div className="flex h-full w-full flex-col">
           {/* Top section: header with toggle + logo, followed by quick links */}
           <div className="px-2 py-1.5">
@@ -29,7 +31,7 @@ export default function ThreadHistory() {
               <TooltipIconButton
                 tooltip="Toggle sidebar"
                 aria-label="Toggle sidebar"
-                onClick={() => setChatHistoryOpen((p) => !p)}
+                onClick={toggleSidebar}
                 variant="outline"
               >
                 {chatHistoryOpen ? (
@@ -89,19 +91,19 @@ export default function ThreadHistory() {
 
           {/* Bottom section: user nav */}
           <div className="border-t px-2 py-2">
-            <NavUser />
+            <NavUser isLargeScreen={isLargeScreen} />
           </div>
         </div>
-      </div>
+      </motion.div>
       <div className="md:hidden">
         <Sheet
           open={!!chatHistoryOpen && !isLargeScreen}
           onOpenChange={(open) => {
             if (isLargeScreen) return;
-            setChatHistoryOpen(open);
+            toggleSidebar();
           }}
         >
-          <SheetContent side="left" className="md:hidden p-0 bg-secondary w-[256px]">
+          <SheetContent side="left" className="md:hidden p-0 bg-secondary" style={{ width: SIDEBAR_WIDTH_PX }}>
             <div className="flex h-full w-full flex-col">
               <div className="px-2 py-1.5">
                 <div className="flex items-center justify-between">
@@ -111,7 +113,7 @@ export default function ThreadHistory() {
                   <TooltipIconButton
                     tooltip="Toggle sidebar"
                     aria-label="Toggle sidebar"
-                    onClick={() => setChatHistoryOpen((p) => !p)}
+                    onClick={toggleSidebar}
                     variant="outline"
                   >
                     {chatHistoryOpen ? (
@@ -162,12 +164,12 @@ export default function ThreadHistory() {
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-3">
                 <h2 className="mb-2 text-sm font-semibold tracking-tight text-muted-foreground">Chats</h2>
                 <div className="min-h-0 flex-1 overflow-hidden">
-                  <ChatHistory onThreadClick={() => setChatHistoryOpen((o) => !o)} />
+                  <ChatHistory onThreadClick={toggleSidebar} />
                 </div>
               </div>
 
               <div className="border-t px-2 py-2">
-                <NavUser />
+                <NavUser isLargeScreen={isLargeScreen} />
               </div>
             </div>
           </SheetContent>

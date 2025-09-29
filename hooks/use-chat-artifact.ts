@@ -5,7 +5,7 @@ interface OnArtifactCloseOptions {
   wait?: number;
 }
 
-export function useThreadLayout() {
+export function useChatArtifact() {
   const [artifactContext, setArtifactContext] = useArtifactContext();
   const [artifactOpen, closeArtifact] = useArtifactOpen();
 

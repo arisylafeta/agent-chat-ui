@@ -3,7 +3,6 @@ import "./globals.css";
 import { Inter } from "next/font/google";
 import React from "react";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
-import { SidebarProvider } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 
 const inter = Inter({
@@ -29,9 +28,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider>
-          <SidebarProvider>
             <NuqsAdapter>{children}</NuqsAdapter>
-          </SidebarProvider>
         </ThemeProvider>
       </body>
     </html>

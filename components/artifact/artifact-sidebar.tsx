@@ -5,7 +5,7 @@ import { ArtifactContent, ArtifactTitle, useArtifactBoundingBox } from "./artifa
 import { XIcon } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
-import { useMediaQuery } from "../../hooks/useMediaQuery";
+import { useMediaQuery } from "../../hooks/use-media-queries";
 import { useQueryState, parseAsBoolean } from "nuqs";
 
 export function ArtifactSidebar({

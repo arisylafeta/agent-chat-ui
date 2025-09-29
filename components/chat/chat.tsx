@@ -1,25 +1,23 @@
 import { ReactNode, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { cn } from "../../lib/utils";
-import { useStreamContext } from "../../providers/Stream";
-import { Button } from "../ui/button";
-import { ChatHeader } from "./chat-header";
+import { cn } from "@/lib/utils";
+import { useStreamContext } from "@/providers/Stream";
+import { Button } from "@/components/ui/button";
+import { ChatHeader } from "@/components/chat/chat-header";
 import { MultimodalInput } from "./multimodal-input";
 import { ArrowDown } from "lucide-react";
-import { useQueryState, parseAsBoolean } from "nuqs";
 import { StickToBottom, useStickToBottomContext } from "use-stick-to-bottom";
-import ThreadHistory from "../sidebar/app-sidebar";
-import { Messages } from "../messages/messages";
+import { Messages } from "@/components/messages/messages";
 import { toast } from "sonner";
-import { useMediaQuery } from "../../hooks/useMediaQuery";
-import { useFileUpload } from "../../hooks/use-file-upload";
-import { ArtifactSidebar } from "../artifact/artifact-sidebar";
+import { useFileUpload } from "@/hooks/use-file-upload";
+import { ArtifactSidebar } from "@/components/artifact/artifact-sidebar";
 import Suggested from "./suggested";
-import { useThreadLayout } from "../../hooks/useThreadLayout";
-import { useChatSubmission } from "../../hooks/useChatSubmission";
+import { useChatArtifact } from "@/hooks/use-chat-artifact";
+import { useChatSubmission } from "@/hooks/use-chat-submission";
+import { useChatSidebar } from "@/hooks/use-chat-sidebar";
+import { useQueryState } from "nuqs";
+import ChatSidebar from "@/components/sidebar/app-sidebar";
 
-// Sidebar width parity with supabase-ui (16rem = 256px)
-const SIDEBAR_WIDTH_PX = 256;
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -72,13 +70,17 @@ export function Thread() {
     artifactOpenForLayout,
     blankArtifactBackground,
     onArtifactClose,
-  } = useThreadLayout();
+  } = useChatArtifact();
 
   const [threadId, _setThreadId] = useQueryState("threadId");
-  const [chatHistoryOpen, setChatHistoryOpen] = useQueryState(
-    "chatHistoryOpen",
-    parseAsBoolean.withDefault(false),
-  );
+  const {
+    chatHistoryOpen,
+    toggleSidebar,
+    isLargeScreen,
+    sidebarMotionProps,
+    contentMotionProps,
+    SIDEBAR_WIDTH_PX,
+  } = useChatSidebar();
   const {
     contentBlocks,
     setContentBlocks,
@@ -102,7 +104,6 @@ export function Thread() {
     contentBlocks,
     setContentBlocks,
   });
-  const isLargeScreen = useMediaQuery("(min-width: 768px)");
 
   // Alias for readability in layout decisions
   const isOverlayLayout = artifactOpenForLayout;
@@ -162,26 +163,13 @@ export function Thread() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
-      <div className="relative hidden md:flex">
-        <motion.div
-          className="absolute z-20 h-full overflow-hidden border-r bg-white-soft"
-          style={{ width: SIDEBAR_WIDTH_PX }}
-          animate={
-            isLargeScreen
-              ? { x: chatHistoryOpen ? 0 : -SIDEBAR_WIDTH_PX }
-              : { x: chatHistoryOpen ? 0 : -SIDEBAR_WIDTH_PX }
-          }
-          initial={{ x: -SIDEBAR_WIDTH_PX }}
-          transition={{ duration: 0.2, ease: "linear" }}
-        >
-          <div
-            className="relative h-full"
-            style={{ width: SIDEBAR_WIDTH_PX }}
-          >
-            <ThreadHistory />
-          </div>
-        </motion.div>
-      </div>
+        <ChatSidebar 
+          chatHistoryOpen={chatHistoryOpen}
+          toggleSidebar={toggleSidebar}
+          isLargeScreen={isLargeScreen}
+          sidebarMotionProps={sidebarMotionProps}
+          SIDEBAR_WIDTH_PX={SIDEBAR_WIDTH_PX}
+        />
 
       <div className={cn("grid w-full grid-cols-[1fr_0fr] transition-all duration-500")}
       >
@@ -191,22 +179,14 @@ export function Thread() {
             !chatStarted && "grid-rows-[1fr]",
           )}
           layout={isLargeScreen}
-          animate={{
-            marginLeft: chatHistoryOpen ? (isLargeScreen ? SIDEBAR_WIDTH_PX : 0) : 0,
-            width: chatHistoryOpen
-              ? isLargeScreen
-                ? `calc(100% - ${SIDEBAR_WIDTH_PX}px)`
-                : "100%"
-              : "100%",
-          }}
-          transition={{ duration: 0.2, ease: "linear" }}
+          {...contentMotionProps}
         >
           <ChatHeader
             chatStarted={chatStarted}
             isOverlayLayout={artifactOpenForLayout}
             isLargeScreen={isLargeScreen}
             chatHistoryOpen={chatHistoryOpen}
-            onToggleSidebar={() => setChatHistoryOpen((p) => !p)}
+            onToggleSidebar={toggleSidebar}
             onNewThread={() => setThreadId(null)}
             opened={chatHistoryOpen}
           />
