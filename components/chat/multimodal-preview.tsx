@@ -25,7 +25,10 @@ export const MultimodalPreview: React.FC<MultimodalPreviewProps> = ({
     typeof block.mime_type === "string" &&
     block.mime_type.startsWith("image/")
   ) {
-    const url = `data:${block.mime_type};base64,${block.data}`;
+    // Check if data is already a URL (from Supabase upload) or base64
+    const isUrl = block.data.startsWith("http://") || block.data.startsWith("https://");
+    const url = isUrl ? block.data : `data:${block.mime_type};base64,${block.data}`;
+    
     let imgClass: string = "rounded-md object-cover h-16 w-16 text-lg";
     if (size === "sm") imgClass = "rounded-md object-cover h-10 w-10 text-base";
     if (size === "lg") imgClass = "rounded-md object-cover h-24 w-24 text-xl";

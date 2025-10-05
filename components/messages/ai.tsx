@@ -116,7 +116,7 @@ export function AssistantMessage({
   const contentString = getContentString(content);
   const [hideToolCalls] = useQueryState(
     "hideToolCalls",
-    parseAsBoolean.withDefault(false),
+    parseAsBoolean.withDefault(true), // Hide tool calls by default for cleaner UI
   );
 
   const thread = useStreamContext();
@@ -146,7 +146,28 @@ export function AssistantMessage({
   const hasAnthropicToolCalls = !!anthropicStreamedToolCalls?.length;
   const isToolResult = message?.type === "tool";
 
+  // Check if this message has custom UI artifacts
+  const uiList = Array.isArray(thread.values.ui)
+    ? thread.values.ui
+    : thread.values.ui
+      ? [thread.values.ui as any]
+      : [];
+  const hasArtifact = uiList.some(
+    (ui) => ui?.metadata?.message_id === message?.id,
+  );
+
+  // Hide tool result messages when hideToolCalls is true
   if (isToolResult && hideToolCalls) {
+    return null;
+  }
+
+  // Don't render AI messages with only tool calls (no content, no artifact) when hideToolCalls is true
+  if (
+    hideToolCalls &&
+    hasToolCalls &&
+    contentString.length === 0 &&
+    !hasArtifact
+  ) {
     return null;
   }
 
