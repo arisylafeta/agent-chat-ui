@@ -47,14 +47,13 @@ export function LensResults(props: LensResultsProps) {
 
   const setOpen = bag?.setOpen ?? (() => {});
   const isOpen = !!bag?.open;
-  const products = props.products || [];
+  const products = useMemo(() => props.products || [], [props.products]);
   const hasProducts = products.length > 0;
   const hasError = props.error === true;
 
   // Filter and sort state
   const [sortBy, setSortBy] = useState<"relevance" | "price-asc" | "price-desc" | "rating">("relevance");
   const [showFilters, setShowFilters] = useState(false);
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000]);
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [inStockOnly, setInStockOnly] = useState(false);
 
@@ -75,19 +74,12 @@ export function LensResults(props: LensResultsProps) {
     if (selectedBrands.size > 0) {
       filtered = filtered.filter(p => p.brand && selectedBrands.has(p.brand));
     }
-
+    
     if (inStockOnly) {
       filtered = filtered.filter(p => p.attributes?.in_stock === true);
     }
 
-    if (priceRange[0] > 0 || priceRange[1] < 1000) {
-      filtered = filtered.filter(p => {
-        if (!p.price || p.price === 0) return true; // Keep items without price
-        return p.price >= priceRange[0] && p.price <= priceRange[1];
-      });
-    }
-
-    // Apply sorting
+    // Sort products
     switch (sortBy) {
       case "price-asc":
         filtered.sort((a, b) => (a.price || 0) - (b.price || 0));
@@ -105,7 +97,7 @@ export function LensResults(props: LensResultsProps) {
     }
 
     return filtered;
-  }, [products, selectedBrands, inStockOnly, priceRange, sortBy]);
+  }, [products, selectedBrands, inStockOnly, sortBy]);
 
   return (
     <>
@@ -150,17 +142,16 @@ export function LensResults(props: LensResultsProps) {
             aria-hidden
             className={cn(
               "h-5 w-5 text-gray-400 transition-transform shrink-0",
-              isOpen ? "opacity-60" : "group-hover:translate-x-0.5",
             )}
           />
         </div>
 
         {!isOpen && hasProducts && (
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
-            {products.slice(0, 4).map((product, idx) => (
+          <div className="mt-4 flex gap-2">
+            {products.slice(0, Math.min(products.length, 5)).map((product, idx) => (
               <div
                 key={idx}
-                className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-gray-100 border border-gray-200"
+                className="flex-1 aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200 min-w-0"
               >
                 {product.image ? (
                   <img
@@ -175,21 +166,16 @@ export function LensResults(props: LensResultsProps) {
                 )}
               </div>
             ))}
-            {products.length > 4 && (
-              <div className="flex-shrink-0 w-20 h-20 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center">
+            {products.length > 5 && (
+              <div className="flex-1 aspect-square rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center min-w-0">
                 <span className="text-sm font-medium text-gray-600">
-                  +{products.length - 4}
+                  +{products.length - 5}
                 </span>
               </div>
             )}
           </div>
         )}
 
-        {!isOpen && props.modelName && (
-          <p className="mt-3 text-xs text-gray-500">
-            Powered by {props.modelName}
-          </p>
-        )}
       </div>
 
       {ArtifactComp ? (
@@ -270,59 +256,74 @@ export function LensResults(props: LensResultsProps) {
 
             {/* Filter Panel */}
             {showFilters && hasProducts && !hasError && (
-              <div className="mb-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Brand Filter */}
-                  {availableBrands.length > 0 && (
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-700 mb-2">Brands</h4>
-                      <div className="space-y-1 max-h-32 overflow-y-auto">
-                        {availableBrands.map(brand => (
-                          <label key={brand} className="flex items-center gap-2 text-sm">
-                            <input
-                              type="checkbox"
-                              checked={selectedBrands.has(brand)}
-                              onChange={(e) => {
-                                const newSet = new Set(selectedBrands);
-                                if (e.target.checked) {
-                                  newSet.add(brand);
-                                } else {
-                                  newSet.delete(brand);
-                                }
-                                setSelectedBrands(newSet);
-                              }}
-                              className="rounded border-gray-300"
-                            />
-                            {brand}
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Stock Filter */}
+              <div className="mb-6 space-y-4">
+                {/* Brand Filter */}
+                {availableBrands.length > 0 && (
                   <div>
-                    <h4 className="text-sm font-medium text-gray-700 mb-2">Availability</h4>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={inStockOnly}
-                        onChange={(e) => setInStockOnly(e.target.checked)}
-                        className="rounded border-gray-300"
-                      />
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium text-gray-700">Brands</h4>
+                      {selectedBrands.size > 0 && (
+                        <button
+                          onClick={() => setSelectedBrands(new Set())}
+                          className="text-xs text-blue-600 hover:text-blue-700"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                      {availableBrands.map(brand => (
+                        <button
+                          key={brand}
+                          onClick={() => {
+                            const newSet = new Set(selectedBrands);
+                            if (selectedBrands.has(brand)) {
+                              newSet.delete(brand);
+                            } else {
+                              newSet.add(brand);
+                            }
+                            setSelectedBrands(newSet);
+                          }}
+                          className={cn(
+                            "px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors border",
+                            selectedBrands.has(brand)
+                              ? "bg-blue-100 border-blue-300 text-blue-700"
+                              : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                          )}
+                        >
+                          {brand}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Availability Filter */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Availability</h4>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setInStockOnly(!inStockOnly)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors border",
+                        inStockOnly
+                          ? "bg-blue-100 border-blue-300 text-blue-700"
+                          : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                      )}
+                    >
                       In stock only
-                    </label>
+                    </button>
                   </div>
                 </div>
 
-                {/* Clear Filters */}
+                {/* Clear All Filters */}
                 {(selectedBrands.size > 0 || inStockOnly) && (
                   <button
                     onClick={() => {
                       setSelectedBrands(new Set());
                       setInStockOnly(false);
                     }}
-                    className="mt-3 text-sm text-blue-600 hover:text-blue-700"
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                   >
                     Clear all filters
                   </button>
@@ -352,7 +353,7 @@ export function LensResults(props: LensResultsProps) {
                 )}
               </div>
             ) : filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 min-[1000px]:grid-cols-3 min-[1200px]:grid-cols-4 min-[1300px]:grid-cols-5 gap-4">
                 {filteredProducts.map((product, idx) => (
                   <ProductCard key={product.id || idx} product={product} />
                 ))}
@@ -403,7 +404,7 @@ function ProductCard({ product }: { product: Product }) {
       href={product.product_url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group block rounded-lg border border-gray-200 bg-white hover:shadow-md transition-shadow overflow-hidden"
+      className="group block rounded-lg border border-gray-200 bg-white hover:shadow-md transition-shadow overflow-hidden min-w-[180px]"
     >
       {/* Product Image */}
       <div className="aspect-square bg-gray-100 relative overflow-hidden">

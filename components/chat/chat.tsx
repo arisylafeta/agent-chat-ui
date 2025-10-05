@@ -193,14 +193,13 @@ export function Thread() {
           <div
             className={cn(
               "flex flex-col items-center gap-8 bg-background w-full min-w-0 overflow-x-hidden px-3 sm:px-4",
-              artifactOpen ? "px-4 md:max-w-[400px]" : "",
+              artifactOpen ? "px-4 md:max-w-[400px]" : "max-w-3xl mx-auto",
             )}
           >
             <div
               ref={dropRef}
               className={cn(
                 "bg-background relative z-10 mb-8 w-full rounded-2xl shadow-xs transition-all",
-                artifactOpen ? "max-w-3xl mx-auto" : "",
                 dragOver
                   ? "border-primary border-2 border-dashed"
                   : "border border-solid",
