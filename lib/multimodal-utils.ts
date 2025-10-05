@@ -1,5 +1,6 @@
 import type { Base64ContentBlock } from "@langchain/core/messages";
 import { toast } from "sonner";
+import { uploadImageWithFallback } from "./upload-image";
 
 // Returns a Promise of a typed multimodal block for images or PDFs
 export async function fileToContentBlock(
@@ -20,19 +21,41 @@ export async function fileToContentBlock(
     return Promise.reject(new Error(`Unsupported file type: ${file.type}`));
   }
 
-  const data = await fileToBase64(file);
-
+  // For images: Upload to Supabase first, get public URL
   if (supportedImageTypes.includes(file.type)) {
-    return {
-      type: "image",
-      source_type: "base64",
-      mime_type: file.type,
-      data,
-      metadata: { name: file.name },
-    };
+    try {
+      const { url, isBase64 } = await uploadImageWithFallback(file);
+      
+      if (isBase64) {
+        // Fallback: use base64 (remove data URI prefix)
+        const data = url.split(",")[1];
+        return {
+          type: "image",
+          source_type: "base64",
+          mime_type: file.type,
+          data,
+          metadata: { name: file.name },
+        };
+      } else {
+        // Success: use Supabase URL (put URL in data field)
+        // The backend will detect it's a URL and handle accordingly
+        return {
+          type: "image",
+          source_type: "base64", // Keep as base64 for type compatibility
+          mime_type: file.type,
+          data: url, // Public Supabase URL (not actually base64, but backend handles it)
+          metadata: { name: file.name, uploaded: true, isUrl: true },
+        };
+      }
+    } catch (error) {
+      console.error('[fileToContentBlock] Image upload failed:', error);
+      toast.error("Failed to upload image. Please try again.");
+      return Promise.reject(error);
+    }
   }
 
-  // PDF
+  // PDF: Keep base64 for now
+  const data = await fileToBase64(file);
   return {
     type: "file",
     source_type: "base64",
