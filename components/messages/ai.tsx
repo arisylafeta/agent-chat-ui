@@ -116,7 +116,7 @@ export function AssistantMessage({
   const contentString = getContentString(content);
   const [hideToolCalls] = useQueryState(
     "hideToolCalls",
-    parseAsBoolean.withDefault(true), // Hide tool calls by default for cleaner UI
+    parseAsBoolean.withDefault(false), // Show thinking process by default
   );
 
   const thread = useStreamContext();
@@ -182,6 +182,7 @@ export function AssistantMessage({
               isLastMessage={isLastMessage}
               hasNoAIOrToolMessages={hasNoAIOrToolMessages}
             />
+            {/* No CommandBar for tool results - they're part of the thinking process */}
           </>
         ) : (
           <>
@@ -216,25 +217,28 @@ export function AssistantMessage({
               isLastMessage={isLastMessage}
               hasNoAIOrToolMessages={hasNoAIOrToolMessages}
             />
-            <div
-              className={cn(
-                "mr-auto flex items-center gap-2 transition-opacity",
-                "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100",
-              )}
-            >
-              <BranchSwitcher
-                branch={meta?.branch}
-                branchOptions={meta?.branchOptions}
-                onSelect={(branch) => thread.setBranch(branch)}
-                isLoading={isLoading}
-              />
-              <CommandBar
-                content={contentString}
-                isLoading={isLoading}
-                isAiMessage={true}
-                handleRegenerate={() => handleRegenerate(parentCheckpoint)}
-              />
-            </div>
+            {/* Only show CommandBar if there's actual content (not just tool calls) */}
+            {contentString.length > 0 && (
+              <div
+                className={cn(
+                  "mr-auto flex items-center gap-2 transition-opacity",
+                  "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100",
+                )}
+              >
+                <BranchSwitcher
+                  branch={meta?.branch}
+                  branchOptions={meta?.branchOptions}
+                  onSelect={(branch) => thread.setBranch(branch)}
+                  isLoading={isLoading}
+                />
+                <CommandBar
+                  content={contentString}
+                  isLoading={isLoading}
+                  isAiMessage={true}
+                  handleRegenerate={() => handleRegenerate(parentCheckpoint)}
+                />
+              </div>
+            )}
           </>
         )}
       </div>

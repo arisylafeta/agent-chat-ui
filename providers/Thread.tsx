@@ -11,6 +11,7 @@ import {
   SetStateAction,
 } from "react";
 import { createClient } from "./client";
+import { createClient as createSupabaseClient } from '@/utils/supabase/client';
 
 interface ThreadContextType {
   getThreads: () => Promise<Thread[]>;
@@ -43,7 +44,22 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
     const apiKey: string | undefined = process.env.LANGGRAPH_API_KEY || undefined;
 
     if (!apiUrl || !assistantId) return [];
-    const client = createClient(apiUrl, apiKey);
+
+    // Get Supabase session for JWT
+    const supabase = createSupabaseClient();
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      console.warn('[ThreadProvider] No active session - user not logged in');
+      return [];
+    }
+
+    console.log('[ThreadProvider] Passing JWT to LangGraph');
+
+    // Create client with JWT in headers
+    const client = createClient(apiUrl, apiKey, {
+      'Authorization': `Bearer ${session.access_token}`
+    });
 
     const threads = await client.threads.search({
       metadata: {

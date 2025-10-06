@@ -4,6 +4,7 @@ import React, {
   useContext,
   ReactNode,
   useEffect,
+  useState,
 } from "react";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import { type Message } from "@langchain/langgraph-sdk";
@@ -17,6 +18,7 @@ import {
 import { useQueryState } from "nuqs";
 import { useThreads } from "./Thread";
 import { toast } from "sonner";
+import { createClient as createSupabaseClient } from '@/utils/supabase/client';
 
 export type StateType = { messages: Message[]; ui?: UIMessage[] };
 
@@ -72,12 +74,49 @@ const StreamSession = ({
 }) => {
   const [threadId, setThreadId] = useQueryState("threadId");
   const { getThreads, setThreads } = useThreads();
+  const [authHeaders, setAuthHeaders] = useState<Record<string, string>>({});
+
+  // Get Supabase session and set auth headers
+  useEffect(() => {
+    const supabase = createSupabaseClient();
+    
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        console.log('[StreamProvider] Setting Authorization header');
+        setAuthHeaders({
+          'Authorization': `Bearer ${session.access_token}`
+        });
+      } else {
+        console.log('[StreamProvider] No session found');
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (session) {
+          console.log('[StreamProvider] Auth state changed - updating header');
+          setAuthHeaders({
+            'Authorization': `Bearer ${session.access_token}`
+          });
+        } else {
+          console.log('[StreamProvider] User logged out - clearing header');
+          setAuthHeaders({});
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   const streamValue = useTypedStream({
     apiUrl,
     apiKey: apiKey ?? undefined,
     assistantId,
     threadId: threadId ?? null,
     fetchStateHistory: true,
+    // Pass auth headers to useStream
+    defaultHeaders: authHeaders,
     onCustomEvent: (event, options) => {
       if (isUIMessage(event) || isRemoveUIMessage(event)) {
         options.mutate((prev) => {

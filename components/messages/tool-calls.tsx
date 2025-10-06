@@ -7,61 +7,160 @@ function isComplexValue(value: any): boolean {
   return Array.isArray(value) || (typeof value === "object" && value !== null);
 }
 
+// Map tool names to human-readable thinking phases
+function getThinkingPhase(toolName: string): string {
+  const phaseMap: Record<string, string> = {
+    search: "Searching for your results...",
+    search_product_online: "Searching for visual matches...",
+    lens_search: "Searching for your results...",
+    web_search: "Searching the web now...",
+    generate: "Crafting your results now...",
+    create_outfit: "Creating your outfit now...",
+    analyze_image: "Analyzing your image now...",
+    get_recommendations: "Finding recommendations for you...",
+  };
+  
+  return phaseMap[toolName] || "Processing your request now...";
+}
+
+// Render cleaned up tool call content based on tool type
+function renderToolCallContent(toolName: string, args: Record<string, any>) {
+  // For search-related tools, show query if available
+  if (toolName.includes("search") && args.query) {
+    return (
+      <p className="text-xs text-gray-400 italic">
+        Query: {args.query}
+      </p>
+    );
+  }
+  
+  // For other tools, show a minimal representation
+  const relevantKeys = Object.keys(args).filter(
+    key => !key.includes("id") && !key.includes("metadata")
+  );
+  
+  if (relevantKeys.length === 0) return null;
+  
+  return (
+    <div className="text-xs text-gray-400 space-y-1">
+      {relevantKeys.slice(0, 2).map((key) => (
+        <p key={key} className="italic">
+          {key}: {String(args[key]).slice(0, 100)}{String(args[key]).length > 100 ? "..." : ""}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 export function ToolCalls({
   toolCalls,
 }: {
   toolCalls: AIMessage["tool_calls"];
 }) {
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  
   if (!toolCalls || toolCalls.length === 0) return null;
 
   return (
     <div className="mx-auto grid max-w-3xl grid-rows-[1fr_auto] gap-2">
       {toolCalls.map((tc, idx) => {
         const args = tc.args as Record<string, any>;
-        const hasArgs = Object.keys(args).length > 0;
+        const isExpanded = expandedIndex === idx;
+        
         return (
           <div
             key={idx}
-            className="overflow-hidden rounded-lg border border-gray-200"
+            className="overflow-hidden bg-transparent"
           >
-            <div className="border-b border-gray-200 bg-gray-50 px-4 py-2">
-              <h3 className="font-medium text-gray-900">
-                {tc.name}
-                {tc.id && (
-                  <code className="ml-2 rounded bg-gray-100 px-2 py-1 text-sm">
-                    {tc.id}
-                  </code>
-                )}
-              </h3>
-            </div>
-            {hasArgs ? (
-              <table className="min-w-full divide-y divide-gray-200">
-                <tbody className="divide-y divide-gray-200">
-                  {Object.entries(args).map(([key, value], argIdx) => (
-                    <tr key={argIdx}>
-                      <td className="px-4 py-2 text-sm font-medium whitespace-nowrap text-gray-900">
-                        {key}
-                      </td>
-                      <td className="px-4 py-2 text-sm text-gray-500">
-                        {isComplexValue(value) ? (
-                          <code className="rounded bg-gray-50 px-2 py-1 font-mono text-sm break-all">
-                            {JSON.stringify(value, null, 2)}
-                          </code>
-                        ) : (
-                          String(value)
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <code className="block p-3 text-sm">{"{}"}</code>
-            )}
+            <button
+              onClick={() => setExpandedIndex(isExpanded ? null : idx)}
+              className="w-full text-left px-2 py-1 flex items-center justify-between hover:bg-gray-50/30 transition-colors rounded"
+            >
+              <div className="flex-1">
+                <h3 className="text-gray-500 text-xs italic">
+                  {getThinkingPhase(tc.name)}
+                </h3>
+              </div>
+              {isExpanded ? (
+                <ChevronUp className="h-3 w-3 text-gray-400" />
+              ) : (
+                <ChevronDown className="h-3 w-3 text-gray-400" />
+              )}
+            </button>
+            
+            <AnimatePresence>
+              {isExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="overflow-hidden"
+                >
+                  <div className="px-2 pb-2">
+                    <div className="pt-1">
+                      {renderToolCallContent(tc.name, args)}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         );
       })}
     </div>
+  );
+}
+
+// Get human-readable result phase
+function getResultPhase(toolName: string): string {
+  const phaseMap: Record<string, string> = {
+    search: "Found results for you",
+    search_product_online: "Found visual matches now",
+    lens_search: "Found results for you",
+    web_search: "Web search complete now",
+    generate: "Results are ready now",
+    create_outfit: "Outfit created for you",
+    analyze_image: "Image analysis complete now",
+    get_recommendations: "Recommendations ready for you",
+  };
+  
+  return phaseMap[toolName] || "Processing complete for you";
+}
+
+// Render search results as unordered list (titles only)
+function renderSearchResults(items: any[]) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  
+  return (
+    <ul className="list-disc list-inside space-y-1 text-xs text-gray-500 italic">
+      {items.map((item, idx) => {
+        // Handle different item structures
+        if (typeof item === "string") {
+          return <li key={idx}>{item}</li>;
+        }
+        
+        // Extract title only
+        const title = item.title || item.name || item.label;
+        
+        if (title) {
+          // Clean up the title - remove site names and extra info
+          const cleanTitle = title
+            .replace(/\s*[|\\-]\s*(Amazon\.com|Walmart|eBay|Poshmark|iHeartRaves|CLOTHBASE|Hipercalzado|Amazon\.com\.au).*$/i, '')
+            .trim();
+          
+          return (
+            <li key={idx} className="ml-2">
+              {cleanTitle}
+            </li>
+          );
+        }
+        
+        // Fallback: show first meaningful value
+        const firstValue = Object.values(item).find(v => v && String(v).length > 0);
+        return firstValue ? <li key={idx}>{String(firstValue).slice(0, 100)}</li> : null;
+      })}
+    </ul>
   );
 }
 
@@ -81,110 +180,66 @@ export function ToolResult({ message }: { message: ToolMessage }) {
     parsedContent = message.content;
   }
 
-  const contentStr = isJsonContent
-    ? JSON.stringify(parsedContent, null, 2)
-    : String(message.content);
-  const contentLines = contentStr.split("\n");
-  const shouldTruncate = contentLines.length > 4 || contentStr.length > 500;
-  const displayedContent =
-    shouldTruncate && !isExpanded
-      ? contentStr.length > 500
-        ? contentStr.slice(0, 500) + "..."
-        : contentLines.slice(0, 4).join("\n") + "\n..."
-      : contentStr;
+  const toolName = message.name || "";
+  const isSearchTool = toolName.includes("search");
 
   return (
     <div className="mx-auto grid max-w-3xl grid-rows-[1fr_auto] gap-2">
-      <div className="overflow-hidden rounded-lg border border-gray-200">
-        <div className="border-b border-gray-200 bg-gray-50 px-4 py-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            {message.name ? (
-              <h3 className="font-medium text-gray-900">
-                Tool Result:{" "}
-                <code className="rounded bg-gray-100 px-2 py-1">
-                  {message.name}
-                </code>
-              </h3>
-            ) : (
-              <h3 className="font-medium text-gray-900">Tool Result</h3>
-            )}
-            {message.tool_call_id && (
-              <code className="ml-2 rounded bg-gray-100 px-2 py-1 text-sm">
-                {message.tool_call_id}
-              </code>
-            )}
-          </div>
-        </div>
-        <motion.div
-          className="min-w-full bg-gray-100"
-          initial={false}
-          animate={{ height: "auto" }}
-          transition={{ duration: 0.3 }}
+      <div className="overflow-hidden bg-transparent">
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="w-full text-left px-2 py-1 flex items-center justify-between hover:bg-gray-50/30 transition-colors rounded"
         >
-          <div className="p-3">
-            <AnimatePresence
-              mode="wait"
-              initial={false}
-            >
-              <motion.div
-                key={isExpanded ? "expanded" : "collapsed"}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.2 }}
-              >
-                {isJsonContent ? (
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <tbody className="divide-y divide-gray-200">
-                      {(Array.isArray(parsedContent)
-                        ? isExpanded
-                          ? parsedContent
-                          : parsedContent.slice(0, 5)
-                        : Object.entries(parsedContent)
-                      ).map((item, argIdx) => {
-                        const [key, value] = Array.isArray(parsedContent)
-                          ? [argIdx, item]
-                          : [item[0], item[1]];
-                        return (
-                          <tr key={argIdx}>
-                            <td className="px-4 py-2 text-sm font-medium whitespace-nowrap text-gray-900">
-                              {key}
-                            </td>
-                            <td className="px-4 py-2 text-sm text-gray-500">
-                              {isComplexValue(value) ? (
-                                <code className="rounded bg-gray-50 px-2 py-1 font-mono text-sm break-all">
-                                  {JSON.stringify(value, null, 2)}
-                                </code>
-                              ) : (
-                                String(value)
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                ) : (
-                  <code className="block text-sm">{displayedContent}</code>
-                )}
-              </motion.div>
-            </AnimatePresence>
+          <div className="flex-1">
+            <h3 className="text-gray-500 text-xs italic">
+              {getResultPhase(toolName)}
+            </h3>
           </div>
-          {((shouldTruncate && !isJsonContent) ||
-            (isJsonContent &&
-              Array.isArray(parsedContent) &&
-              parsedContent.length > 5)) && (
-            <motion.button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="flex w-full cursor-pointer items-center justify-center border-t-[1px] border-gray-200 py-2 text-gray-500 transition-all duration-200 ease-in-out hover:bg-gray-50 hover:text-gray-600"
-              initial={{ scale: 1 }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              {isExpanded ? <ChevronUp /> : <ChevronDown />}
-            </motion.button>
+          {isExpanded ? (
+            <ChevronUp className="h-3 w-3 text-gray-400" />
+          ) : (
+            <ChevronDown className="h-3 w-3 text-gray-400" />
           )}
-        </motion.div>
+        </button>
+        
+        <AnimatePresence>
+          {isExpanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="px-2 pb-2">
+                <div className="pt-1">
+                  {isSearchTool && Array.isArray(parsedContent) ? (
+                    renderSearchResults(parsedContent)
+                  ) : isSearchTool && parsedContent?.matches ? (
+                    renderSearchResults(parsedContent.matches)
+                  ) : isSearchTool && parsedContent?.results ? (
+                    renderSearchResults(parsedContent.results)
+                  ) : isSearchTool && parsedContent?.items ? (
+                    renderSearchResults(parsedContent.items)
+                  ) : isJsonContent && Array.isArray(parsedContent) ? (
+                    <ul className="list-disc list-inside space-y-1 text-xs text-gray-500 italic">
+                      {parsedContent.slice(0, isExpanded ? undefined : 5).map((item, idx) => (
+                        <li key={idx} className="ml-2">
+                          {typeof item === "string" ? item : JSON.stringify(item)}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-gray-500 italic">
+                      {String(message.content).slice(0, isExpanded ? undefined : 300)}
+                      {!isExpanded && String(message.content).length > 300 ? "..." : ""}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
