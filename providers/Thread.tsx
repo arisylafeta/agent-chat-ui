@@ -1,5 +1,4 @@
 'use client';
-import { validate } from "uuid";
 import { Thread } from "@langchain/langgraph-sdk";
 import {
   createContext,
@@ -10,8 +9,6 @@ import {
   Dispatch,
   SetStateAction,
 } from "react";
-import { createClient } from "./client";
-import { createClient as createSupabaseClient } from '@/utils/supabase/client';
 
 interface ThreadContextType {
   getThreads: () => Promise<Thread[]>;
@@ -23,52 +20,45 @@ interface ThreadContextType {
 
 const ThreadContext = createContext<ThreadContextType | undefined>(undefined);
 
-function getThreadSearchMetadata(
-  assistantId: string,
-): { graph_id: string } | { assistant_id: string } {
-  if (validate(assistantId)) {
-    return { assistant_id: assistantId };
-  } else {
-    return { graph_id: assistantId };
-  }
-}
-
 export function ThreadProvider({ children }: { children: ReactNode }) {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(false);
 
   const getThreads = useCallback(async (): Promise<Thread[]> => {
-    // Mirror StreamProvider env config so only threadId is URL-driven
-    const apiUrl: string = process.env.NEXT_PUBLIC_API_URL || "http://localhost:2024";
-    const assistantId: string = process.env.NEXT_PUBLIC_ASSISTANT_ID || "agent";
-    const apiKey: string | undefined = process.env.LANGGRAPH_API_KEY || undefined;
-
-    if (!apiUrl || !assistantId) return [];
-
-    // Get Supabase session for JWT
-    const supabase = createSupabaseClient();
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session) {
-      console.warn('[ThreadProvider] No active session - user not logged in');
+    try {
+      // Call custom API endpoint that queries Supabase threads table
+      // This bypasses LangGraph's in-memory storage and includes public threads
+      const response = await fetch('/api/threads');
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          console.warn('[ThreadProvider] User not authenticated');
+          return [];
+        }
+        console.error('[ThreadProvider] API error:', response.statusText);
+        return [];
+      }
+      
+      const data = await response.json();
+      
+      // Transform Supabase threads to LangGraph Thread format
+      const threads: Thread[] = (data.threads || []).map((t: any) => ({
+        thread_id: t.thread_id,
+        created_at: t.created_at,
+        updated_at: t.updated_at,
+        metadata: {
+          name: t.name,
+          is_public: t.is_public,
+          owner_id: t.owner_id,
+        },
+        values: {}, // Will be populated when thread is loaded
+      }));
+      
+      return threads;
+    } catch (error) {
+      console.error('[ThreadProvider] Failed to fetch threads:', error);
       return [];
     }
-
-    console.log('[ThreadProvider] Passing JWT to LangGraph');
-
-    // Create client with JWT in headers
-    const client = createClient(apiUrl, apiKey, {
-      'Authorization': `Bearer ${session.access_token}`
-    });
-
-    const threads = await client.threads.search({
-      metadata: {
-        ...getThreadSearchMetadata(assistantId),
-      },
-      limit: 100,
-    });
-
-    return threads;
   }, []);
 
   const value = {

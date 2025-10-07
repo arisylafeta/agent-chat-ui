@@ -5,6 +5,7 @@ import React, {
   ReactNode,
   useEffect,
   useState,
+  useMemo,
 } from "react";
 import { useStream } from "@langchain/langgraph-sdk/react";
 import { type Message } from "@langchain/langgraph-sdk";
@@ -15,10 +16,10 @@ import {
   type UIMessage,
   type RemoveUIMessage,
 } from "@langchain/langgraph-sdk/react-ui";
-import { useQueryState } from "nuqs";
 import { useThreads } from "./Thread";
 import { toast } from "sonner";
 import { createClient as createSupabaseClient } from '@/utils/supabase/client';
+import { useRouter } from "next/navigation";
 
 export type StateType = { messages: Message[]; ui?: UIMessage[] };
 
@@ -66,48 +67,24 @@ const StreamSession = ({
   apiKey,
   apiUrl,
   assistantId,
+  authToken,
+  initialThreadId,
 }: {
   children: ReactNode;
   apiKey: string | null;
   apiUrl: string;
   assistantId: string;
+  authToken: string | null;
+  initialThreadId: string | null;
 }) => {
-  const [threadId, setThreadId] = useQueryState("threadId");
+  const router = useRouter();
   const { getThreads, setThreads } = useThreads();
-  const [authHeaders, setAuthHeaders] = useState<Record<string, string>>({});
+  const threadId = initialThreadId;
 
-  // Get Supabase session and set auth headers
-  useEffect(() => {
-    const supabase = createSupabaseClient();
-    
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        console.log('[StreamProvider] Setting Authorization header');
-        setAuthHeaders({
-          'Authorization': `Bearer ${session.access_token}`
-        });
-      } else {
-        console.log('[StreamProvider] No session found');
-      }
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (session) {
-          console.log('[StreamProvider] Auth state changed - updating header');
-          setAuthHeaders({
-            'Authorization': `Bearer ${session.access_token}`
-          });
-        } else {
-          console.log('[StreamProvider] User logged out - clearing header');
-          setAuthHeaders({});
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
+  const defaultHeaders = useMemo(
+    () => (authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    [authToken]
+  );
 
   const streamValue = useTypedStream({
     apiUrl,
@@ -115,8 +92,7 @@ const StreamSession = ({
     assistantId,
     threadId: threadId ?? null,
     fetchStateHistory: true,
-    // Pass auth headers to useStream
-    defaultHeaders: authHeaders,
+    defaultHeaders,
     onCustomEvent: (event, options) => {
       if (isUIMessage(event) || isRemoveUIMessage(event)) {
         options.mutate((prev) => {
@@ -126,9 +102,10 @@ const StreamSession = ({
       }
     },
     onThreadId: (id) => {
-      setThreadId(id);
-      // Refetch threads list when thread ID changes.
-      // Wait for some seconds before fetching so we're able to get the new thread that was created.
+      // Navigate to the new thread route
+      if (id) {
+        router.push(`/${id}`);
+      }
       sleep().then(() => getThreads().then(setThreads).catch(console.error));
     },
   });
@@ -158,19 +135,47 @@ const StreamSession = ({
   );
 };
 
-export const StreamProvider: React.FC<{ children: ReactNode }> = ({
+export const StreamProvider: React.FC<{ 
+  children: ReactNode;
+  threadId: string | null;
+}> = ({
   children,
+  threadId,
 }) => {
-  // Get environment variables
-  const apiUrl: string = process.env.NEXT_PUBLIC_API_URL || "http://localhost:2024";
-  const assistantId: string = process.env.NEXT_PUBLIC_ASSISTANT_ID || "agent";
-  const apiKey: string | null = process.env.LANGGRAPH_API_KEY || null;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:2024";
+  const assistantId = process.env.NEXT_PUBLIC_ASSISTANT_ID || "agent";
+  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+
+  useEffect(() => {
+    const supabase = createSupabaseClient();
+    
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setAuthToken(session?.access_token ?? null);
+      setIsAuthReady(true);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setAuthToken(session?.access_token ?? null);
+        setIsAuthReady(true);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (!isAuthReady) {
+    return null; // Or a proper loading component if needed
+  }
 
   return (
     <StreamSession
-      apiKey={apiKey}
+      apiKey={null}
       apiUrl={apiUrl}
       assistantId={assistantId}
+      authToken={authToken}
+      initialThreadId={threadId}
     >
       {children}
     </StreamSession>

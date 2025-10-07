@@ -15,7 +15,7 @@ import Suggested from "./suggested";
 import { useChatArtifact } from "@/hooks/use-chat-artifact";
 import { useChatSubmission } from "@/hooks/use-chat-submission";
 import { useChatSidebar } from "@/hooks/use-chat-sidebar";
-import { useQueryState } from "nuqs";
+import { useRouter } from "next/navigation";
 import ChatSidebar from "@/components/sidebar/app-sidebar";
 
 
@@ -39,7 +39,8 @@ function ScrollToBottom() {
   );
 }
 
-export function Thread() {
+export function Thread({ threadId: initialThreadId }: { threadId: string | null }) {
+  const router = useRouter();
   const {
     artifactContext,
     setArtifactContext,
@@ -48,7 +49,9 @@ export function Thread() {
     onArtifactClose,
   } = useChatArtifact();
 
-  const [threadId, _setThreadId] = useQueryState("threadId");
+  // Use the threadId from props (route parameter or null for new chat)
+  const threadId = initialThreadId;
+  
   const {
     chatHistoryOpen,
     toggleSidebar,
@@ -87,7 +90,12 @@ export function Thread() {
   const lastError = useRef<string | undefined>(undefined);
 
   const setThreadId = (id: string | null) => {
-    _setThreadId(id);
+    // Navigate to the appropriate route
+    if (id) {
+      router.push(`/${id}`);
+    } else {
+      router.push('/');
+    }
 
     // close artifact and reset artifact context
     closeArtifact();
