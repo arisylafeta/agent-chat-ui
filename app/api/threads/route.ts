@@ -15,11 +15,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Query threads table: owned threads OR public threads
+    // Query thread table directly from Supabase
+    // This is the source of truth for thread ownership
     const { data: threads, error: dbError } = await supabase
-      .from('threads')
+      .from('thread')
       .select('*')
-      .or(`owner_id.eq.${user.id},is_public.eq.true`)
+      .eq('user_id', user.id)
       .order('updated_at', { ascending: false });
 
     if (dbError) {
@@ -29,6 +30,8 @@ export async function GET(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    console.log(`[API /threads] Found ${threads?.length || 0} threads for user ${user.id}`);
 
     return NextResponse.json({ threads: threads || [] });
   } catch (error) {

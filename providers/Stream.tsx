@@ -16,10 +16,10 @@ import {
   type UIMessage,
   type RemoveUIMessage,
 } from "@langchain/langgraph-sdk/react-ui";
+import { useQueryState } from "nuqs";
 import { useThreads } from "./Thread";
 import { toast } from "sonner";
 import { createClient as createSupabaseClient } from '@/utils/supabase/client';
-import { useRouter } from "next/navigation";
 
 export type StateType = { messages: Message[]; ui?: UIMessage[] };
 
@@ -45,14 +45,21 @@ async function sleep(ms = 4000) {
 async function checkGraphStatus(
   apiUrl: string,
   apiKey: string | null,
+  authToken: string | null,
 ): Promise<boolean> {
   try {
+    const headers: Record<string, string> = {};
+    
+    if (apiKey) {
+      headers["X-Api-Key"] = apiKey;
+    }
+    
+    if (authToken) {
+      headers["Authorization"] = `Bearer ${authToken}`;
+    }
+    
     const res = await fetch(`${apiUrl}/info`, {
-      ...(apiKey && {
-        headers: {
-          "X-Api-Key": apiKey,
-        },
-      }),
+      headers,
     });
 
     return res.ok;
@@ -68,18 +75,15 @@ const StreamSession = ({
   apiUrl,
   assistantId,
   authToken,
-  initialThreadId,
 }: {
   children: ReactNode;
   apiKey: string | null;
   apiUrl: string;
   assistantId: string;
   authToken: string | null;
-  initialThreadId: string | null;
 }) => {
-  const router = useRouter();
+  const [threadId, setThreadId] = useQueryState("threadId");
   const { getThreads, setThreads } = useThreads();
-  const threadId = initialThreadId;
 
   const defaultHeaders = useMemo(
     () => (authToken ? { Authorization: `Bearer ${authToken}` } : {}),
@@ -91,7 +95,7 @@ const StreamSession = ({
     apiKey: apiKey ?? undefined,
     assistantId,
     threadId: threadId ?? null,
-    fetchStateHistory: true,
+    fetchStateHistory: false,
     defaultHeaders,
     onCustomEvent: (event, options) => {
       if (isUIMessage(event) || isRemoveUIMessage(event)) {
@@ -102,16 +106,13 @@ const StreamSession = ({
       }
     },
     onThreadId: (id) => {
-      // Navigate to the new thread route
-      if (id) {
-        router.push(`/${id}`);
-      }
+      setThreadId(id);
       sleep().then(() => getThreads().then(setThreads).catch(console.error));
     },
   });
 
   useEffect(() => {
-    checkGraphStatus(apiUrl, apiKey).then((ok) => {
+    checkGraphStatus(apiUrl, apiKey, authToken).then((ok) => {
       if (!ok) {
         toast.error("Failed to connect to LangGraph server", {
           description: () => (
@@ -126,7 +127,7 @@ const StreamSession = ({
         });
       }
     });
-  }, [apiKey, apiUrl]);
+  }, [apiKey, apiUrl, authToken]);
 
   return (
     <StreamContext.Provider value={streamValue}>
@@ -135,12 +136,8 @@ const StreamSession = ({
   );
 };
 
-export const StreamProvider: React.FC<{ 
-  children: ReactNode;
-  threadId: string | null;
-}> = ({
+export const StreamProvider: React.FC<{ children: ReactNode }> = ({
   children,
-  threadId,
 }) => {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:2024";
   const assistantId = process.env.NEXT_PUBLIC_ASSISTANT_ID || "agent";
@@ -175,7 +172,6 @@ export const StreamProvider: React.FC<{
       apiUrl={apiUrl}
       assistantId={assistantId}
       authToken={authToken}
-      initialThreadId={threadId}
     >
       {children}
     </StreamSession>

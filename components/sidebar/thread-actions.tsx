@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { MoreHorizontal, Edit2, Trash2, Globe, Lock } from "lucide-react";
+import { MoreHorizontal, Edit2, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { createClient } from "@/utils/supabase/client";
 
 interface ThreadActionsProps {
   threadId: string;
@@ -35,28 +35,24 @@ export function ThreadActions({
   isPublic,
   onUpdate,
 }: ThreadActionsProps) {
-  const router = useRouter();
-  const pathname = usePathname();
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [newName, setNewName] = useState(threadName || "");
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Check if we're currently viewing this thread
-  const isCurrentThread = pathname?.includes(threadId);
 
   const handleRename = async () => {
     if (!newName.trim()) return;
     
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/threads/${threadId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName }),
-      });
+      // Update directly in Supabase (faster, no backend overhead)
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('thread')
+        .update({ name: newName, updated_at: new Date().toISOString() })
+        .eq('thread_id', threadId);
 
-      if (!response.ok) throw new Error("Failed to rename thread");
+      if (error) throw error;
 
       setRenameDialogOpen(false);
       onUpdate();
@@ -71,44 +67,20 @@ export function ThreadActions({
   const handleDelete = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/threads/${threadId}`, {
-        method: "DELETE",
-      });
+      // Delete directly from Supabase (faster, no backend overhead)
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('thread')
+        .delete()
+        .eq('thread_id', threadId);
 
-      if (!response.ok) throw new Error("Failed to delete thread");
+      if (error) throw error;
 
       setDeleteDialogOpen(false);
-      
-      // If we're deleting the current thread, redirect to home (new chat)
-      if (isCurrentThread) {
-        router.push('/');
-      }
-      
-      // Refresh the thread list
       onUpdate();
     } catch (error) {
       console.error("Failed to delete thread:", error);
       alert("Failed to delete thread. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleTogglePublic = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`/api/threads/${threadId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_public: !isPublic }),
-      });
-
-      if (!response.ok) throw new Error("Failed to toggle public status");
-
-      onUpdate();
-    } catch (error) {
-      console.error("Failed to toggle public status:", error);
-      alert("Failed to update thread. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -138,25 +110,6 @@ export function ThreadActions({
           >
             <Edit2 className="mr-2 h-4 w-4" />
             Rename
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            onClick={(e) => {
-              e.stopPropagation();
-              handleTogglePublic();
-            }}
-            disabled={isLoading}
-          >
-            {isPublic ? (
-              <>
-                <Lock className="mr-2 h-4 w-4" />
-                Make Private
-              </>
-            ) : (
-              <>
-                <Globe className="mr-2 h-4 w-4" />
-                Make Public
-              </>
-            )}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem

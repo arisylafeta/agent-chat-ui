@@ -1,6 +1,7 @@
 import { TooltipIconButton } from "../ui/tooltip-icon-button";
 import { PanelRightOpen, PanelRightClose, Plus } from "lucide-react";
 import Image from "next/image";
+import { PrivacyToggle } from "./privacy-toggle";
 
 export function ChatHeader(props: {
   chatStarted: boolean;
@@ -9,6 +10,9 @@ export function ChatHeader(props: {
   chatHistoryOpen: boolean;
   onToggleSidebar: () => void;
   onNewThread: () => void;
+  threadId?: string;
+  isPublic?: boolean;
+  onPrivacyChange?: () => void;
   opened?: boolean;
 }) {
   const {
@@ -18,6 +22,9 @@ export function ChatHeader(props: {
     chatHistoryOpen,
     onToggleSidebar,
     onNewThread,
+    threadId,
+    isPublic,
+    onPrivacyChange,
   } = props;
   const opened = props.opened ?? false;
 
@@ -50,6 +57,15 @@ export function ChatHeader(props: {
         >
           <Plus className="size-5" />
         </TooltipIconButton>
+
+        {/* Privacy Toggle - only show if thread exists */}
+        {threadId && (
+          <PrivacyToggle
+            threadId={threadId}
+            isPublic={isPublic ?? false}
+            onUpdate={onPrivacyChange}
+          />
+        )}
       </div>
 
       {/* Right: Wordmark */}

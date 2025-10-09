@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useStreamContext } from "@/providers/Stream";
@@ -15,8 +15,9 @@ import Suggested from "./suggested";
 import { useChatArtifact } from "@/hooks/use-chat-artifact";
 import { useChatSubmission } from "@/hooks/use-chat-submission";
 import { useChatSidebar } from "@/hooks/use-chat-sidebar";
-import { useRouter } from "next/navigation";
+import { useQueryState } from "nuqs";
 import ChatSidebar from "@/components/sidebar/app-sidebar";
+import { createClient } from "@/utils/supabase/client";
 
 
 function ScrollToBottom() {
@@ -39,8 +40,7 @@ function ScrollToBottom() {
   );
 }
 
-export function Thread({ threadId: initialThreadId }: { threadId: string | null }) {
-  const router = useRouter();
+export function Thread() {
   const {
     artifactContext,
     setArtifactContext,
@@ -49,8 +49,38 @@ export function Thread({ threadId: initialThreadId }: { threadId: string | null 
     onArtifactClose,
   } = useChatArtifact();
 
-  // Use the threadId from props (route parameter or null for new chat)
-  const threadId = initialThreadId;
+  const [threadId, _setThreadId] = useQueryState("threadId");
+  const [currentThreadIsPublic, setCurrentThreadIsPublic] = useState(false);
+  
+  // Fetch thread's is_public status directly from Supabase when thread changes
+  useEffect(() => {
+    if (!threadId) {
+      setCurrentThreadIsPublic(false);
+      return;
+    }
+
+    const fetchThreadPrivacy = async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('thread')
+          .select('is_public')
+          .eq('thread_id', threadId)
+          .single();
+
+        if (error) {
+          console.error('Error fetching thread privacy:', error);
+          return;
+        }
+
+        setCurrentThreadIsPublic(data?.is_public ?? false);
+      } catch (error) {
+        console.error('Failed to fetch thread privacy:', error);
+      }
+    };
+
+    fetchThreadPrivacy();
+  }, [threadId]);
   
   const {
     chatHistoryOpen,
@@ -89,18 +119,13 @@ export function Thread({ threadId: initialThreadId }: { threadId: string | null 
 
   const lastError = useRef<string | undefined>(undefined);
 
-  const setThreadId = (id: string | null) => {
-    // Navigate to the appropriate route
-    if (id) {
-      router.push(`/${id}`);
-    } else {
-      router.push('/');
-    }
+  const setThreadId = useCallback((id: string | null) => {
+    _setThreadId(id);
 
     // close artifact and reset artifact context
     closeArtifact();
     setArtifactContext({});
-  };
+  }, [_setThreadId, closeArtifact, setArtifactContext]);
 
   useEffect(() => {
     if (!stream.error) {
@@ -111,6 +136,29 @@ export function Thread({ threadId: initialThreadId }: { threadId: string | null 
       const message = (stream.error as any).message;
       if (!message || lastError.current === message) {
         // Message has already been logged. do not modify ref, return early.
+        return;
+      }
+
+      // Check if error is related to thread not found or access denied
+      const isThreadNotFound = 
+        message.toLowerCase().includes('thread not found') ||
+        message.toLowerCase().includes('thread does not exist') ||
+        message.toLowerCase().includes('404');
+      
+      const isAccessDenied = 
+        message.toLowerCase().includes('access denied') ||
+        message.toLowerCase().includes('403') ||
+        message.toLowerCase().includes('unauthorized');
+
+      if ((isThreadNotFound || isAccessDenied) && threadId) {
+        // Reset to new chat when thread is not found or access denied
+        lastError.current = message;
+        toast.error(isAccessDenied ? "Access denied" : "Thread not found", {
+          description: "Starting a new chat instead.",
+          richColors: true,
+          closeButton: true,
+        });
+        setThreadId(null);
         return;
       }
 
@@ -128,7 +176,7 @@ export function Thread({ threadId: initialThreadId }: { threadId: string | null 
     } catch {
       // no-op
     }
-  }, [stream.error]);
+  }, [stream.error, threadId, setThreadId]);
 
   const chatStarted = !!threadId || !!messages.length;
   const hasNoAIOrToolMessages = !messages.find(
@@ -162,6 +210,14 @@ export function Thread({ threadId: initialThreadId }: { threadId: string | null 
             chatHistoryOpen={chatHistoryOpen}
             onToggleSidebar={toggleSidebar}
             onNewThread={() => setThreadId(null)}
+            threadId={threadId || undefined}
+            isPublic={currentThreadIsPublic}
+            onPrivacyChange={() => {
+              // Update local state immediately
+              setCurrentThreadIsPublic(!currentThreadIsPublic);
+              // Trigger thread list refresh
+              window.dispatchEvent(new Event('thread-updated'));
+            }}
             opened={chatHistoryOpen}
           />
 

@@ -46,13 +46,18 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
         thread_id: t.thread_id,
         created_at: t.created_at,
         updated_at: t.updated_at,
-        metadata: {
-          name: t.name,
-          is_public: t.is_public,
-          owner_id: t.owner_id,
-        },
+        status: t.status || 'idle',
+        // Parse metadata_json from Supabase
+        metadata: typeof t.metadata_json === 'string' 
+          ? JSON.parse(t.metadata_json)
+          : (t.metadata_json || {}),
         values: {}, // Will be populated when thread is loaded
+        // Include name and is_public from database
+        name: t.name,
+        is_public: t.is_public,
       }));
+      
+      console.log(`[ThreadProvider] Loaded ${threads.length} threads`);
       
       return threads;
     } catch (error) {
