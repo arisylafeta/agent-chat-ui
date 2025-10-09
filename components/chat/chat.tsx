@@ -52,35 +52,37 @@ export function Thread() {
   const [threadId, _setThreadId] = useQueryState("threadId");
   const [currentThreadIsPublic, setCurrentThreadIsPublic] = useState(false);
   
-  // Fetch thread's is_public status directly from Supabase when thread changes
-  useEffect(() => {
+  // Fetch thread's is_public status directly from Supabase
+  const fetchThreadPrivacy = useCallback(async () => {
     if (!threadId) {
       setCurrentThreadIsPublic(false);
       return;
     }
 
-    const fetchThreadPrivacy = async () => {
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from('thread')
-          .select('is_public')
-          .eq('thread_id', threadId)
-          .single();
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('thread')
+        .select('is_public')
+        .eq('thread_id', threadId)
+        .single();
 
-        if (error) {
-          console.error('Error fetching thread privacy:', error);
-          return;
-        }
-
-        setCurrentThreadIsPublic(data?.is_public ?? false);
-      } catch (error) {
-        console.error('Failed to fetch thread privacy:', error);
+      if (error) {
+        console.error('Error fetching thread privacy:', error);
+        return;
       }
-    };
 
-    fetchThreadPrivacy();
+      console.log('[fetchThreadPrivacy] Thread:', threadId, 'is_public:', data?.is_public);
+      setCurrentThreadIsPublic(data?.is_public ?? false);
+    } catch (error) {
+      console.error('Failed to fetch thread privacy:', error);
+    }
   }, [threadId]);
+
+  // Fetch on thread change
+  useEffect(() => {
+    fetchThreadPrivacy();
+  }, [fetchThreadPrivacy]);
   
   const {
     chatHistoryOpen,
@@ -213,8 +215,8 @@ export function Thread() {
             threadId={threadId || undefined}
             isPublic={currentThreadIsPublic}
             onPrivacyChange={() => {
-              // Update local state immediately
-              setCurrentThreadIsPublic(!currentThreadIsPublic);
+              // Refetch privacy status from database
+              fetchThreadPrivacy();
               // Trigger thread list refresh
               window.dispatchEvent(new Event('thread-updated'));
             }}

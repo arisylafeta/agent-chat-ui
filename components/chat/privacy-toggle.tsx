@@ -1,15 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { Lock, LockOpen, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Lock, LockOpen, Check, Share2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
 
 interface PrivacyToggleProps {
   threadId: string;
@@ -24,6 +26,11 @@ export function PrivacyToggle({
 }: PrivacyToggleProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [currentIsPublic, setCurrentIsPublic] = useState(isPublic);
+
+  // Sync internal state when prop changes
+  useEffect(() => {
+    setCurrentIsPublic(isPublic);
+  }, [isPublic]);
 
   const handleTogglePrivacy = async (newIsPublic: boolean) => {
     if (newIsPublic === currentIsPublic) return;
@@ -49,6 +56,12 @@ export function PrivacyToggle({
     }
   };
 
+  const handleCopyShareLink = () => {
+    const shareUrl = `${window.location.origin}/share/${threadId}`;
+    navigator.clipboard.writeText(shareUrl);
+    toast.success("Share link copied to clipboard!");
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -66,7 +79,7 @@ export function PrivacyToggle({
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-40">
+      <DropdownMenuContent align="start" className="w-48">
         <DropdownMenuItem
           onClick={() => handleTogglePrivacy(false)}
           className="flex items-center justify-between"
@@ -86,6 +99,17 @@ export function PrivacyToggle({
             <span>Public</span>
           </div>
           {currentIsPublic && <Check className="h-4 w-4" />}
+        </DropdownMenuItem>
+        
+        <DropdownMenuSeparator />
+        
+        <DropdownMenuItem
+          onClick={handleCopyShareLink}
+          disabled={!currentIsPublic}
+          className="flex items-center gap-2"
+        >
+          <Share2 className="h-4 w-4" />
+          <span>Copy share link</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
