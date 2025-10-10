@@ -1,14 +1,11 @@
 import { useCallback, useMemo } from "react";
-import { useQueryState, parseAsBoolean } from "nuqs";
 import { useMediaQuery } from "./use-media-queries";
+import { useThreads } from "@/providers/Thread";
 
 const SIDEBAR_WIDTH_PX = 256;
 
 export function useChatSidebar() {
-  const [chatHistoryOpen, setChatHistoryOpen] = useQueryState(
-    "chatHistoryOpen",
-    parseAsBoolean.withDefault(false),
-  );
+  const { chatHistoryOpen, setChatHistoryOpen } = useThreads();
   const isLargeScreen = useMediaQuery("(min-width: 768px)");
 
   const toggleSidebar = useCallback(() => {

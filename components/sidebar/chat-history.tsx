@@ -4,8 +4,7 @@ import { Button } from "../ui/button";
 import { Skeleton } from "../ui/skeleton";
 import { useThreads } from "../../providers/Thread";
 import { Thread } from "@langchain/langgraph-sdk";
-import { useEffect } from "react";
-import { useQueryState } from "nuqs";
+import { useRouter, usePathname } from "next/navigation";
 import { getContentString } from "../../lib/utils";
 import { ThreadActions } from "./thread-actions";
 
@@ -19,7 +18,8 @@ function ThreadList({
   onThreadClick?: (threadId: string) => void;
   onThreadUpdate: () => void;
 }) {
-  const [threadId, setThreadId] = useQueryState("threadId");
+  const router = useRouter();
+  const pathname = usePathname();
 
   return (
     <div className="flex h-full w-full flex-col items-start justify-start gap-1 overflow-y-scroll [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-track]:bg-transparent">
@@ -47,9 +47,10 @@ function ThreadList({
           itemText = getContentString(firstMessage.content);
         }
         
-        // Check is_public from both database field and metadata
-        const isPublic = (t as any).is_public === true || t.metadata?.is_public === true;
         const threadName = (t as any).name || (t.metadata?.name && typeof t.metadata.name === 'string' ? t.metadata.name : undefined);
+        
+        // Check if this thread is currently active
+        const isActive = pathname === `/${t.thread_id}`;
         
         return (
           <div key={t.thread_id} className="w-full px-1 group">
@@ -57,13 +58,13 @@ function ThreadList({
               <Button
                 variant="ghost"
                 className="flex-1 items-start justify-start text-left font-normal text-xs leading-tight py-1.5 h-auto px-2"
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.preventDefault();
-                  console.log('[ChatHistory] Thread clicked:', t.thread_id, 'Current threadId:', threadId);
+                  console.log('[ChatHistory] Thread clicked:', t.thread_id);
                   onThreadClick?.(t.thread_id);
-                  if (t.thread_id === threadId) return;
-                  console.log('[ChatHistory] Setting threadId to:', t.thread_id);
-                  setThreadId(t.thread_id);
+                  if (isActive) return;
+                  console.log('[ChatHistory] Navigating to:', `/${t.thread_id}`);
+                  router.push(`/${t.thread_id}`);
                 }}
               >
                 <p className="truncate text-ellipsis text-xs">{itemText}</p>
@@ -72,7 +73,6 @@ function ThreadList({
                 <ThreadActions
                   threadId={t.thread_id}
                   threadName={threadName}
-                  isPublic={isPublic}
                   onUpdate={onThreadUpdate}
                 />
               </div>
@@ -110,11 +110,8 @@ export default function ChatHistory({
       .finally(() => setThreadsLoading(false));
   };
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    handleThreadUpdate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // No useEffect here - threads are fetched once at layout level
+  // This prevents refetching on every navigation
 
   if (threadsLoading) {
     return <ThreadHistoryLoading />;

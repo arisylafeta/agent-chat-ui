@@ -16,10 +16,10 @@ import {
   type UIMessage,
   type RemoveUIMessage,
 } from "@langchain/langgraph-sdk/react-ui";
-import { useQueryState } from "nuqs";
 import { useThreads } from "./Thread";
 import { toast } from "sonner";
 import { createClient as createSupabaseClient } from '@/utils/supabase/client';
+import { useRouter, usePathname } from "next/navigation";
 
 export type StateType = { messages: Message[]; ui?: UIMessage[] };
 
@@ -82,8 +82,9 @@ const StreamSession = ({
   assistantId: string;
   authToken: string | null;
 }) => {
-  const [threadId, setThreadId] = useQueryState("threadId");
-  const { getThreads, setThreads } = useThreads();
+  const { currentThreadId: threadId, setCurrentThreadId: setThreadId, getThreads, setThreads } = useThreads();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const defaultHeaders = useMemo(
     () => (authToken ? { Authorization: `Bearer ${authToken}` } : {}),
@@ -108,6 +109,12 @@ const StreamSession = ({
     onThreadId: (id) => {
       setThreadId(id);
       sleep().then(() => getThreads().then(setThreads).catch(console.error));
+      
+      // Navigate to /[threadId] if we're on the home page and a new thread was created
+      // Use replace to update URL without breaking the stream (same layout, providers persist)
+      if (pathname === '/' && id) {
+        router.replace(`/${id}`);
+      }
     },
   });
 

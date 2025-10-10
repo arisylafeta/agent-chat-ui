@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { MoreHorizontal, Edit2, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
@@ -21,20 +22,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/utils/supabase/client";
+import { useThreads } from "@/providers/Thread";
 
 interface ThreadActionsProps {
   threadId: string;
   threadName?: string;
-  isPublic: boolean;
   onUpdate: () => void;
 }
 
 export function ThreadActions({
   threadId,
   threadName,
-  isPublic,
   onUpdate,
 }: ThreadActionsProps) {
+  const router = useRouter();
+  const { currentThreadId } = useThreads();
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [newName, setNewName] = useState(threadName || "");
@@ -67,6 +69,9 @@ export function ThreadActions({
   const handleDelete = async () => {
     setIsLoading(true);
     try {
+      // Check if we're deleting the currently active thread
+      const isDeletingCurrentThread = currentThreadId === threadId;
+
       // Delete directly from Supabase (faster, no backend overhead)
       const supabase = createClient();
       const { error } = await supabase
@@ -77,6 +82,13 @@ export function ThreadActions({
       if (error) throw error;
 
       setDeleteDialogOpen(false);
+      
+      // If we deleted the current thread, redirect to home
+      if (isDeletingCurrentThread) {
+        router.push('/');
+      }
+      
+      // Update thread list
       onUpdate();
     } catch (error) {
       console.error("Failed to delete thread:", error);
@@ -94,7 +106,7 @@ export function ThreadActions({
             variant="ghost"
             size="sm"
             className="h-6 w-6 p-0 hover:bg-gray-soft"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e: React.MouseEvent<HTMLButtonElement>) => e.stopPropagation()}
           >
             <MoreHorizontal className="h-4 w-4" />
             <span className="sr-only">Thread actions</span>
@@ -102,7 +114,7 @@ export function ThreadActions({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem
-            onClick={(e) => {
+            onClick={(e: React.MouseEvent<HTMLDivElement>) => {
               e.stopPropagation();
               setNewName(threadName || "");
               setRenameDialogOpen(true);
@@ -113,7 +125,7 @@ export function ThreadActions({
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={(e) => {
+            onClick={(e: React.MouseEvent<HTMLDivElement>) => {
               e.stopPropagation();
               setDeleteDialogOpen(true);
             }}
@@ -127,7 +139,7 @@ export function ThreadActions({
 
       {/* Rename Dialog */}
       <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
-        <DialogContent onClick={(e) => e.stopPropagation()}>
+        <DialogContent onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>Rename Thread</DialogTitle>
             <DialogDescription>
@@ -165,7 +177,7 @@ export function ThreadActions({
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent onClick={(e) => e.stopPropagation()}>
+        <DialogContent onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}>
           <DialogHeader>
             <DialogTitle>Delete Thread</DialogTitle>
             <DialogDescription>

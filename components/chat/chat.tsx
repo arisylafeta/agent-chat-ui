@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from "react";
-import { motion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useStreamContext } from "@/providers/Stream";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,7 @@ import Suggested from "./suggested";
 import { useChatArtifact } from "@/hooks/use-chat-artifact";
 import { useChatSubmission } from "@/hooks/use-chat-submission";
 import { useChatSidebar } from "@/hooks/use-chat-sidebar";
-import { useQueryState } from "nuqs";
-import ChatSidebar from "@/components/sidebar/app-sidebar";
+import { useThreads } from "@/providers/Thread";
 import { createClient } from "@/utils/supabase/client";
 
 
@@ -41,6 +40,7 @@ function ScrollToBottom() {
 }
 
 export function Thread() {
+  const router = useRouter();
   const {
     artifactContext,
     setArtifactContext,
@@ -49,7 +49,7 @@ export function Thread() {
     onArtifactClose,
   } = useChatArtifact();
 
-  const [threadId, _setThreadId] = useQueryState("threadId");
+  const { currentThreadId: threadId } = useThreads();
   const [currentThreadIsPublic, setCurrentThreadIsPublic] = useState(false);
   
   // Fetch thread's is_public status directly from Supabase
@@ -88,10 +88,14 @@ export function Thread() {
     chatHistoryOpen,
     toggleSidebar,
     isLargeScreen,
-    sidebarMotionProps,
-    contentMotionProps,
-    SIDEBAR_WIDTH_PX,
   } = useChatSidebar();
+
+  // Auto-close sidebar when artifact opens
+  useEffect(() => {
+    if (artifactOpen && chatHistoryOpen && isLargeScreen) {
+      toggleSidebar();
+    }
+  }, [artifactOpen, chatHistoryOpen, isLargeScreen, toggleSidebar]);
   const {
     contentBlocks,
     setContentBlocks,
@@ -122,12 +126,17 @@ export function Thread() {
   const lastError = useRef<string | undefined>(undefined);
 
   const setThreadId = useCallback((id: string | null) => {
-    _setThreadId(id);
-
     // close artifact and reset artifact context
     closeArtifact();
     setArtifactContext({});
-  }, [_setThreadId, closeArtifact, setArtifactContext]);
+    
+    // Navigate to appropriate route
+    if (id === null) {
+      router.push('/');
+    } else {
+      router.push(`/${id}`);
+    }
+  }, [router, closeArtifact, setArtifactContext]);
 
   useEffect(() => {
     if (!stream.error) {
@@ -155,12 +164,11 @@ export function Thread() {
       if ((isThreadNotFound || isAccessDenied) && threadId) {
         // Reset to new chat when thread is not found or access denied
         lastError.current = message;
-        toast.error(isAccessDenied ? "Access denied" : "Thread not found", {
+        toast.info(isAccessDenied ? "Access denied" : "Thread not found", {
           description: "Starting a new chat instead.",
-          richColors: true,
           closeButton: true,
         });
-        setThreadId(null);
+        router.push('/');
         return;
       }
 
@@ -178,7 +186,7 @@ export function Thread() {
     } catch {
       // no-op
     }
-  }, [stream.error, threadId, setThreadId]);
+  }, [stream.error, threadId, router]);
 
   const chatStarted = !!threadId || !!messages.length;
   const hasNoAIOrToolMessages = !messages.find(
@@ -187,23 +195,13 @@ export function Thread() {
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
-        <ChatSidebar 
-          chatHistoryOpen={chatHistoryOpen}
-          toggleSidebar={toggleSidebar}
-          isLargeScreen={isLargeScreen}
-          sidebarMotionProps={sidebarMotionProps}
-          SIDEBAR_WIDTH_PX={SIDEBAR_WIDTH_PX}
-        />
-
       <div className={cn("grid w-full grid-cols-[1fr_0fr] transition-all duration-500")}
       >
-        <motion.div
+        <div
           className={cn(
             "relative flex min-w-0 flex-1 flex-col overflow-hidden",
             !chatStarted && "grid-rows-[1fr]",
           )}
-          layout={isLargeScreen}
-          {...contentMotionProps}
         >
           <ChatHeader
             chatStarted={chatStarted}
@@ -284,7 +282,7 @@ export function Thread() {
               />
             </div>
           </div>
-        </motion.div>
+        </div>
 
         {/* Artifact Sidebar */}
         <ArtifactSidebar

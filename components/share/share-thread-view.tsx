@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react";
 import { useQueryState } from "nuqs";
 import { ShareHeader } from "./share-header";
-import { ShareInput } from "./share-input";
 import { LoginDialog } from "./login-dialog";
 import { Messages } from "@/components/messages/messages";
 import { ArtifactSidebar } from "@/components/artifact/artifact-sidebar";
+import { MultimodalInput } from "@/components/chat/multimodal-input";
 import { StickToBottom } from "use-stick-to-bottom";
 import { cn } from "@/lib/utils";
 import { useChatArtifact } from "@/hooks/use-chat-artifact";
@@ -43,7 +43,8 @@ export function ShareThreadView({ threadId, threadName }: ShareThreadViewProps) 
       {/* Header */}
       <ShareHeader 
         threadName={threadName}
-        onLogin={() => setLoginDialogOpen(true)} 
+        onLogin={() => setLoginDialogOpen(true)}
+        artifactOpen={artifactOpen}
       />
 
       {/* Main content area */}
@@ -79,9 +80,35 @@ export function ShareThreadView({ threadId, threadName }: ShareThreadViewProps) 
           </StickToBottom>
 
           {/* Input area - shows login dialog on click */}
-          <div className="border-t bg-background px-4 py-4">
-            <div className="mx-auto max-w-3xl">
-              <ShareInput onInteract={() => setLoginDialogOpen(true)} />
+          <div
+            className={cn(
+              "flex flex-col items-center gap-8 bg-background w-full min-w-0 overflow-x-hidden px-3 sm:px-4",
+              artifactOpen ? "px-4 md:max-w-[400px]" : "max-w-3xl mx-auto",
+            )}
+          >
+            <div
+              onClick={() => setLoginDialogOpen(true)}
+              className={cn(
+                "bg-background relative z-10 mb-8 w-full rounded-2xl shadow-xs transition-all cursor-pointer",
+                "border border-solid",
+              )}
+            >
+              {/* Overlay to capture clicks */}
+              <div className="absolute inset-0 z-10 rounded-2xl" />
+              <MultimodalInput
+                input=""
+                setInput={() => {}}
+                onPaste={(e) => e.preventDefault()}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setLoginDialogOpen(true);
+                }}
+                contentBlocks={[]}
+                onRemoveBlock={() => {}}
+                onFileChange={() => {}}
+                isLoading={false}
+                onStop={() => {}}
+              />
             </div>
           </div>
         </div>

@@ -16,6 +16,10 @@ interface ThreadContextType {
   setThreads: Dispatch<SetStateAction<Thread[]>>;
   threadsLoading: boolean;
   setThreadsLoading: Dispatch<SetStateAction<boolean>>;
+  currentThreadId: string | null;
+  setCurrentThreadId: Dispatch<SetStateAction<string | null>>;
+  chatHistoryOpen: boolean;
+  setChatHistoryOpen: Dispatch<SetStateAction<boolean>>;
 }
 
 const ThreadContext = createContext<ThreadContextType | undefined>(undefined);
@@ -23,6 +27,8 @@ const ThreadContext = createContext<ThreadContextType | undefined>(undefined);
 export function ThreadProvider({ children }: { children: ReactNode }) {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(false);
+  const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
+  const [chatHistoryOpen, setChatHistoryOpen] = useState(false);
 
   const getThreads = useCallback(async (): Promise<Thread[]> => {
     try {
@@ -72,6 +78,10 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
     setThreads,
     threadsLoading,
     setThreadsLoading,
+    currentThreadId,
+    setCurrentThreadId,
+    chatHistoryOpen,
+    setChatHistoryOpen,
   };
 
   return (
