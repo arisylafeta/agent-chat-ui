@@ -20,17 +20,66 @@ import { createClient } from "@/utils/supabase/client";
 
 
 function ScrollToBottom() {
-  const { isAtBottom, scrollToBottom } = useStickToBottomContext();
+  const { scrollToBottom } = useStickToBottomContext();
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const scrollContainerRef = useRef<HTMLElement | null>(null);
 
-  if (isAtBottom) return null;
+  // Manual scroll detection since use-stick-to-bottom isn't working
+  useEffect(() => {
+    const checkScroll = () => {
+      if (scrollContainerRef.current) {
+        const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+        const atBottom = scrollHeight - scrollTop <= clientHeight + 50;
+        setIsAtBottom(atBottom);
+      }
+    };
+
+    // Find the scroll container
+    const scrollContainer = document.querySelector('.overflow-y-auto') as HTMLElement;
+    if (scrollContainer) {
+      scrollContainerRef.current = scrollContainer;
+      
+      // Check on mount
+      checkScroll();
+      
+      // Listen to scroll events
+      scrollContainer.addEventListener('scroll', checkScroll);
+      
+      // Also check on resize
+      const resizeObserver = new ResizeObserver(checkScroll);
+      resizeObserver.observe(scrollContainer);
+      
+      return () => {
+        scrollContainer.removeEventListener('scroll', checkScroll);
+        resizeObserver.disconnect();
+      };
+    }
+  }, []);
+
+  if (isAtBottom) {
+    return null;
+  }
+  
+  const handleClick = () => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    } else {
+      scrollToBottom();
+    }
+  };
   
   return (
-    <div className="absolute bottom-20 left-1/2 -translate-x-1/2 pointer-events-auto">
+    <div 
+      className="fixed bottom-36 left-1/2 -translate-x-1/2 pointer-events-auto z-50"
+    >
       <Button
         variant="outline"
-        size="sm"
-        className="shadow-lg animate-in fade-in-0 zoom-in-95"
-        onClick={() => scrollToBottom()}
+        size="icon"
+        className="shadow-lg rounded-full h-10 w-10"
+        onClick={handleClick}
       >
         <ArrowDown className="h-4 w-4" />
         <span className="sr-only">Scroll to bottom</span>
@@ -124,6 +173,27 @@ export function Thread() {
   const isLoading = stream.isLoading;
 
   const lastError = useRef<string | undefined>(undefined);
+  const prevMessagesLength = useRef(messages.length);
+
+  // Auto-scroll to bottom when new messages arrive or when loading starts
+  useEffect(() => {
+    const scrollContainer = document.querySelector('.overflow-y-auto') as HTMLElement;
+    if (!scrollContainer) return;
+
+    // Check if we should auto-scroll (user was at bottom or new message added)
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+    const wasAtBottom = scrollHeight - scrollTop <= clientHeight + 100;
+    const newMessageAdded = messages.length > prevMessagesLength.current;
+
+    if (wasAtBottom || newMessageAdded || isLoading) {
+      scrollContainer.scrollTo({
+        top: scrollContainer.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+
+    prevMessagesLength.current = messages.length;
+  }, [messages.length, isLoading]);
 
   const setThreadId = useCallback((id: string | null) => {
     // close artifact and reset artifact context
@@ -221,29 +291,28 @@ export function Thread() {
             opened={chatHistoryOpen}
           />
 
-          <StickToBottom className="relative flex-1 overflow-hidden">
+          <StickToBottom 
+            className={cn(
+              "relative flex-1 overflow-y-auto overflow-x-hidden",
+              artifactOpen ? "md:pr-[420px]" : "px-4",
+            )}
+            resize="smooth"
+          >
             <div
               className={cn(
-                "absolute inset-0 overflow-y-auto overflow-x-hidden overscroll-contain",
-                artifactOpen ? "md:pr-[420px]" : "px-4",
-                !chatStarted && "mt-[25vh] flex flex-col items-stretch",
+                "pt-6 pb-8 flex flex-col gap-4 w-full min-w-0",
+                artifactOpen ? "px-4 md:max-w-[400px]" : "max-w-3xl mx-auto",
+                !chatStarted && "mt-[25vh]",
               )}
             >
-              <div
-                className={cn(
-                  "pt-6 pb-8 flex flex-col gap-4 w-full min-w-0",
-                  artifactOpen ? "px-4 md:max-w-[400px]" : "max-w-3xl mx-auto",
-                )}
-              >
-                <Messages
-                  messages={messages}
-                  isLoading={isLoading}
-                  firstTokenReceived={firstTokenReceived}
-                  hasNoAIOrToolMessages={hasNoAIOrToolMessages}
-                  streamInterrupt={stream.interrupt}
-                  handleRegenerate={handleRegenerate}
-                />
-              </div>
+              <Messages
+                messages={messages}
+                isLoading={isLoading}
+                firstTokenReceived={firstTokenReceived}
+                hasNoAIOrToolMessages={hasNoAIOrToolMessages}
+                streamInterrupt={stream.interrupt}
+                handleRegenerate={handleRegenerate}
+              />
             </div>
             <ScrollToBottom />
           </StickToBottom>

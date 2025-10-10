@@ -101,7 +101,8 @@ const StreamSession = ({
     onCustomEvent: (event, options) => {
       if (isUIMessage(event) || isRemoveUIMessage(event)) {
         options.mutate((prev) => {
-          const ui = uiMessageReducer(prev.ui ?? [], event);
+          const currentUi = Array.isArray(prev.ui) ? prev.ui : [];
+          const ui = uiMessageReducer(currentUi, event);
           return { ...prev, ui };
         });
       }

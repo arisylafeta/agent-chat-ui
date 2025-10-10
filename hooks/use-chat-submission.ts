@@ -70,6 +70,9 @@ export function useChatSubmission({
       };
 
       const toolMessages = ensureToolCallsHaveResponses(stream.messages);
+      
+      // Capture current messages before submission to preserve history
+      const currentMessages = stream.messages || [];
 
       stream.submit(
         { messages: [...toolMessages, newHumanMessage], context },
@@ -81,7 +84,7 @@ export function useChatSubmission({
             ...prev,
             context,
             messages: [
-              ...(prev.messages ?? []),
+              ...currentMessages, // Use captured messages instead of prev.messages
               ...toolMessages,
               newHumanMessage,
             ],
