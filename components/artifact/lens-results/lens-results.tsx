@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useStreamContext as useReactUIStreamContext } from "@langchain/langgraph-sdk/react-ui";
-import { ExternalLink, Star, Package, AlertCircle, SlidersHorizontal } from "lucide-react";
+import { Package, AlertCircle, SlidersHorizontal } from "lucide-react";
 import { cn } from "../../../lib/utils";
 
 type Product = {
@@ -14,11 +14,13 @@ type Product = {
   currency: string;
   description: string;
   product_url: string;
-  attributes: {
-    rating?: number;
-    reviews?: number;
-    in_stock?: boolean;
-  };
+  // Metadata from SerpAPI
+  rating?: number;
+  reviews?: number;
+  in_stock?: boolean;
+  source_icon?: string;
+  position?: number;
+  attributes: Record<string, any>;
 };
 
 type LensResultsProps = {
@@ -76,7 +78,7 @@ export function LensResults(props: LensResultsProps) {
     }
     
     if (inStockOnly) {
-      filtered = filtered.filter(p => p.attributes?.in_stock === true);
+      filtered = filtered.filter(p => p.in_stock === true);
     }
 
     // Sort products
@@ -88,11 +90,12 @@ export function LensResults(props: LensResultsProps) {
         filtered.sort((a, b) => (b.price || 0) - (a.price || 0));
         break;
       case "rating":
-        filtered.sort((a, b) => (b.attributes?.rating || 0) - (a.attributes?.rating || 0));
+        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
         break;
       case "relevance":
       default:
-        // Keep original order (relevance from API)
+        // Sort by position (lower position = more relevant)
+        filtered.sort((a, b) => (a.position || 999) - (b.position || 999));
         break;
     }
 
@@ -138,7 +141,7 @@ export function LensResults(props: LensResultsProps) {
               </p>
             )}
           </div>
-          <ExternalLink
+          <Package
             aria-hidden
             className={cn(
               "h-5 w-5 text-gray-400 transition-transform shrink-0",
@@ -396,8 +399,14 @@ export function LensResults(props: LensResultsProps) {
 
 function ProductCard({ product }: { product: Product }) {
   const hasPrice = product.price > 0;
-  const hasRating = product.attributes?.rating !== undefined;
-  const inStock = product.attributes?.in_stock;
+  const inStock = product.in_stock;
+
+  // Format price with currency symbol
+  const formatPrice = (price: number, currency: string) => {
+    // Standardize currency display
+    const currencySymbol = currency.replace(/[^$£€¥]/g, '') || '$';
+    return `${currencySymbol}${price.toFixed(0)}`;
+  };
 
   return (
     <a
@@ -419,9 +428,20 @@ function ProductCard({ product }: { product: Product }) {
             <Package className="h-16 w-16 text-gray-400" />
           </div>
         )}
+        
+        {/* Stock badge overlay - only show if explicitly true or false */}
+        {inStock === true && (
+          <div className="absolute top-2 right-2">
+            <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+              In Stock
+            </span>
+          </div>
+        )}
         {inStock === false && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <span className="text-white text-sm font-medium">Out of Stock</span>
+          <div className="absolute top-2 right-2">
+            <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700">
+              Out of Stock
+            </span>
           </div>
         )}
       </div>
@@ -438,42 +458,16 @@ function ProductCard({ product }: { product: Product }) {
           {product.name}
         </h4>
 
-        {/* Rating */}
-        {hasRating && (
-          <div className="flex items-center gap-1 mb-2">
-            <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-            <span className="text-xs text-gray-600">
-              {product.attributes.rating?.toFixed(1)}
-              {product.attributes.reviews && (
-                <span className="text-gray-400"> ({product.attributes.reviews})</span>
-              )}
-            </span>
-          </div>
-        )}
-
         {/* Price */}
         {hasPrice ? (
           <div className="flex items-baseline gap-1">
             <span className="text-lg font-semibold text-gray-900">
-              {product.currency}{product.price.toFixed(2)}
+              {formatPrice(product.price, product.currency)}
             </span>
           </div>
         ) : (
           <p className="text-sm text-gray-500">Price not available</p>
         )}
-
-        {/* Stock Status */}
-        {inStock === true && (
-          <p className="text-xs text-green-600 mt-1">In Stock</p>
-        )}
-      </div>
-
-      {/* External Link Icon */}
-      <div className="px-4 pb-4">
-        <div className="flex items-center gap-1 text-xs text-gray-500 group-hover:text-gray-700">
-          <span>View product</span>
-          <ExternalLink className="h-3 w-3" />
-        </div>
       </div>
     </a>
   );

@@ -169,11 +169,14 @@ export function ToolResult({ message }: { message: ToolMessage }) {
 
   let parsedContent: any;
   let isJsonContent = false;
+  let hasError = false;
 
   try {
     if (typeof message.content === "string") {
       parsedContent = JSON.parse(message.content);
       isJsonContent = isComplexValue(parsedContent);
+      // Check if the tool result contains an error
+      hasError = !!parsedContent?.error;
     }
   } catch {
     // Content is not JSON, use as is
@@ -191,8 +194,8 @@ export function ToolResult({ message }: { message: ToolMessage }) {
           className="w-full text-left px-2 py-1 flex items-center justify-between hover:bg-gray-50/30 transition-colors rounded"
         >
           <div className="flex-1">
-            <h3 className="text-gray-500 text-xs italic">
-              {getResultPhase(toolName)}
+            <h3 className={hasError ? "text-red-500 text-xs italic" : "text-gray-500 text-xs italic"}>
+              {hasError ? "Search failed - retrying..." : getResultPhase(toolName)}
             </h3>
           </div>
           {isExpanded ? (

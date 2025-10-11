@@ -103,11 +103,21 @@ export default function ChatHistory({
     useThreads();
 
   const handleThreadUpdate = () => {
+    console.log('[ChatHistory] handleThreadUpdate called');
     setThreadsLoading(true);
+    console.log('[ChatHistory] threadsLoading set to true, fetching threads...');
     getThreads()
-      .then(setThreads)
-      .catch(console.error)
-      .finally(() => setThreadsLoading(false));
+      .then((threads) => {
+        console.log('[ChatHistory] Threads fetched, count:', threads.length);
+        setThreads(threads);
+      })
+      .catch((err) => {
+        console.error('[ChatHistory] getThreads failed:', err);
+      })
+      .finally(() => {
+        console.log('[ChatHistory] Setting threadsLoading to false');
+        setThreadsLoading(false);
+      });
   };
 
   // No useEffect here - threads are fetched once at layout level

@@ -58,6 +58,12 @@ export default function ChatSidebar({ chatHistoryOpen, toggleSidebar, isLargeScr
                   </Link>
                 </li>
                 <li>
+                  <Link href="/inspiration" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+                    <Sparkles className="size-4 text-muted-foreground" />
+                    <span>Inspiration</span>
+                  </Link>
+                </li>
+                <li>
                   <Link href="/lookbook" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
                     <BookOpen className="size-4 text-muted-foreground" />
                     <span>Lookbook</span>
@@ -67,12 +73,6 @@ export default function ChatSidebar({ chatHistoryOpen, toggleSidebar, isLargeScr
                   <Link href="/wardrobe" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
                     <Archive className="size-4 text-muted-foreground" />
                     <span>Wardrobe</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/inspiration" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
-                    <Sparkles className="size-4 text-muted-foreground" />
-                    <span>Inspiration</span>
                   </Link>
                 </li>
               </ul>

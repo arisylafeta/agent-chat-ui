@@ -5,7 +5,6 @@ import { getContentString } from "../../lib/utils";
 import { BranchSwitcher, CommandBar } from "./shared";
 import { MarkdownText } from "../markdown-text";
 import { LoadExternalComponent } from "@langchain/langgraph-sdk/react-ui";
-import { Writer } from "../artifact/writer/writer";
 import { LensResults } from "../artifact/lens-results";
 import { cn } from "../../lib/utils";
 import { ToolCalls, ToolResult } from "./tool-calls";
@@ -45,7 +44,7 @@ function CustomComponent({
           stream={thread}
           message={customComponent}
           meta={{ ui: customComponent, artifact }}
-          components={{ writer: Writer, lens_results: LensResults }}
+          components={{ lens_results: LensResults }}
           fallback={<div className="text-sm text-gray-500">Loading…</div>}
         />
       ))}
@@ -120,9 +119,10 @@ export function AssistantMessage({
   );
 
   const thread = useStreamContext();
-  const isLastMessage =
-    thread.messages[thread.messages.length - 1].id === message?.id;
-  const hasNoAIOrToolMessages = !thread.messages.find(
+  const messages = Array.isArray(thread.messages) ? thread.messages : [];
+  const lastMessage = messages[messages.length - 1];
+  const isLastMessage = lastMessage?.id === message?.id;
+  const hasNoAIOrToolMessages = !messages.find(
     (m) => m.type === "ai" || m.type === "tool",
   );
   const meta = message ? thread.getMessagesMetadata(message) : undefined;

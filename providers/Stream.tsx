@@ -108,12 +108,23 @@ const StreamSession = ({
       }
     },
     onThreadId: (id) => {
+      console.log('[StreamProvider] onThreadId called:', id);
       setThreadId(id);
-      sleep().then(() => getThreads().then(setThreads).catch(console.error));
+      console.log('[StreamProvider] Sleeping 4s before fetching threads...');
+      sleep().then(() => {
+        console.log('[StreamProvider] Sleep complete, fetching threads');
+        getThreads().then((threads) => {
+          console.log('[StreamProvider] Threads fetched after sleep, count:', threads.length);
+          setThreads(threads);
+        }).catch((err) => {
+          console.error('[StreamProvider] getThreads after sleep failed:', err);
+        });
+      });
       
       // Navigate to /[threadId] if we're on the home page and a new thread was created
       // Use replace to update URL without breaking the stream (same layout, providers persist)
       if (pathname === '/' && id) {
+        console.log('[StreamProvider] Navigating to /', id);
         router.replace(`/${id}`);
       }
     },
@@ -173,7 +184,7 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
   if (!isAuthReady) {
     return null; // Or a proper loading component if needed
   }
-
+  
   return (
     <StreamSession
       apiKey={null}

@@ -36,7 +36,7 @@ export function ThreadActions({
   onUpdate,
 }: ThreadActionsProps) {
   const router = useRouter();
-  const { currentThreadId } = useThreads();
+  const { currentThreadId, setCurrentThreadId } = useThreads();
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [newName, setNewName] = useState(threadName || "");
@@ -67,10 +67,12 @@ export function ThreadActions({
   };
 
   const handleDelete = async () => {
+    console.log('[ThreadActions] Delete started', { threadId, currentThreadId });
     setIsLoading(true);
     try {
       // Check if we're deleting the currently active thread
       const isDeletingCurrentThread = currentThreadId === threadId;
+      console.log('[ThreadActions] isDeletingCurrentThread:', isDeletingCurrentThread);
 
       // Delete directly from Supabase (faster, no backend overhead)
       const supabase = createClient();
@@ -80,20 +82,32 @@ export function ThreadActions({
         .eq('thread_id', threadId);
 
       if (error) throw error;
+      console.log('[ThreadActions] Thread deleted from DB');
 
       setDeleteDialogOpen(false);
+      console.log('[ThreadActions] Dialog closed');
       
-      // If we deleted the current thread, redirect to home
+      // If we deleted the current thread, clear it and redirect to home
       if (isDeletingCurrentThread) {
+        console.log('[ThreadActions] Clearing currentThreadId and navigating to /');
+        setCurrentThreadId(null); // Clear deleted thread before navigation
         router.push('/');
+        console.log('[ThreadActions] Navigation triggered, deferring onUpdate');
+        // Defer thread list update until after navigation and remount completes
+        setTimeout(() => {
+          console.log('[ThreadActions] Calling deferred onUpdate');
+          onUpdate();
+        }, 500);
+      } else {
+        console.log('[ThreadActions] Non-active thread, calling onUpdate immediately');
+        // For non-active threads, update immediately
+        onUpdate();
       }
-      
-      // Update thread list
-      onUpdate();
     } catch (error) {
-      console.error("Failed to delete thread:", error);
+      console.error('[ThreadActions] Delete failed:', error);
       alert("Failed to delete thread. Please try again.");
     } finally {
+      console.log('[ThreadActions] Delete complete, setIsLoading(false)');
       setIsLoading(false);
     }
   };
