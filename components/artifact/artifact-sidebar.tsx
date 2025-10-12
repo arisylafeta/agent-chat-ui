@@ -124,7 +124,8 @@ export function ArtifactSidebar({
                     },
                   }
             }
-            className="col-start-1 md:col-start-2 z-20 flex h-dvh min-w-0 max-w-full flex-col overflow-x-hidden overflow-y-auto border-zinc-200 bg-background md:border-l dark:border-zinc-700 dark:bg-muted pointer-events-auto"
+            className="col-start-1 md:col-start-2 z-20 flex h-dvh min-w-0 max-w-full flex-col overflow-x-hidden overflow-y-auto border-zinc-200 bg-gray-soft md:border-l dark:border-zinc-700 dark:bg-muted pointer-events-auto relative"
+            data-artifact-panel
             exit={{
               opacity: 0,
               scale: 0.5,
@@ -139,7 +140,7 @@ export function ArtifactSidebar({
               borderRadius: 50,
             }}
           >
-            <div className={cn("flex flex-row items-center justify-between p-3 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60", headerClassName)}>
+            <div className={cn("flex flex-row items-center justify-between p-3 bg-gray-soft/95 backdrop-blur supports-[backdrop-filter]:bg-gray-soft/60 dark:bg-muted/95 dark:supports-[backdrop-filter]:bg-muted/60", headerClassName)}>
               <div className="flex flex-row items-center gap-4">
                 <button onClick={onClose} className="h-fit p-2 rounded-md border border-zinc-200 hover:bg-accent/30 dark:border-zinc-700 dark:hover:bg-zinc-700" aria-label="Close artifact">
                   <XIcon className="size-4" />
@@ -151,7 +152,7 @@ export function ArtifactSidebar({
               </div>
             </div>
 
-            <div className={cn("h-full items-stretch overflow-y-auto bg-background dark:bg-muted", contentClassName)}>
+            <div className={cn("relative h-full items-stretch overflow-y-auto bg-gray-soft dark:bg-muted", contentClassName)} data-artifact-content>
               <ArtifactContent className={cn("min-h-full", contentClassName)} />
             </div>
           </motion.div>

@@ -2,8 +2,15 @@
 
 import React, { useState, useMemo } from "react";
 import { useStreamContext as useReactUIStreamContext } from "@langchain/langgraph-sdk/react-ui";
-import { Package, AlertCircle, SlidersHorizontal } from "lucide-react";
+import { Package, AlertCircle, SlidersHorizontal, X, ExternalLink, Star } from "lucide-react";
 import { cn } from "../../../lib/utils";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+} from "../../ui/drawer";
 
 type Product = {
   id: string;
@@ -58,6 +65,22 @@ export function LensResults(props: LensResultsProps) {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [inStockOnly, setInStockOnly] = useState(false);
+  
+  // Drawer state
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  // Disable background scroll when drawer is open
+  React.useEffect(() => {
+    const artifactContent = document.querySelector('[data-artifact-content]');
+    if (artifactContent) {
+      if (isDrawerOpen) {
+        artifactContent.classList.add('overflow-hidden');
+      } else {
+        artifactContent.classList.remove('overflow-hidden');
+      }
+    }
+  }, [isDrawerOpen]);
 
   // Get unique brands
   const availableBrands = useMemo(() => {
@@ -183,24 +206,44 @@ export function LensResults(props: LensResultsProps) {
 
       {ArtifactComp ? (
         <ArtifactComp title={props.title ?? "Visual Search Results"}>
-          <div className="p-6 md:p-8">
-            {/* Source Image */}
-            {props.imageUrl && (
-              <div className="mb-6">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Search Image</h4>
-                <div className="rounded-lg overflow-hidden border border-gray-200 bg-gray-50 max-w-xs">
-                  <img
-                    src={props.imageUrl}
-                    alt="Search reference"
-                    className="w-full h-auto"
-                  />
+          <div className="p-6 md:p-8 relative" data-lens-results-content>
+            {/* Filters and Sort Controls - Moved to top */}
+            {hasProducts && !hasError && (
+              <div className="mb-6 flex flex-wrap items-center gap-3">
+                {/* Sort Dropdown */}
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Sort:</label>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white dark:bg-zinc-800 dark:border-zinc-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="relevance">Relevance</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="rating">Highest Rated</option>
+                  </select>
                 </div>
-              </div>
-            )}
 
-            {/* Summary */}
-            {props.summary && (
-              <p className="text-sm text-gray-600 mb-6">{props.summary}</p>
+                {/* Filter Toggle */}
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="flex items-center gap-2 text-sm px-3 py-1.5 border border-gray-300 rounded-md bg-white hover:bg-gray-50 dark:bg-zinc-800 dark:border-zinc-600 dark:text-white dark:hover:bg-zinc-700"
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                  Filters
+                  {(selectedBrands.size > 0 || inStockOnly) && (
+                    <span className="ml-1 px-1.5 py-0.5 bg-blue-500 text-white text-xs rounded-full">
+                      {selectedBrands.size + (inStockOnly ? 1 : 0)}
+                    </span>
+                  )}
+                </button>
+
+                {/* Results Count */}
+                <span className="text-sm text-gray-600 dark:text-gray-400 ml-auto">
+                  {filteredProducts.length} {filteredProducts.length === 1 ? 'result' : 'results'}
+                </span>
+              </div>
             )}
 
             {/* Streaming Status */}
@@ -218,45 +261,6 @@ export function LensResults(props: LensResultsProps) {
               </div>
             )}
 
-            {/* Filters and Sort Controls */}
-            {hasProducts && !hasError && (
-              <div className="mb-6 flex flex-wrap items-center gap-3">
-                {/* Sort Dropdown */}
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700">Sort:</label>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
-                    className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="relevance">Relevance</option>
-                    <option value="price-asc">Price: Low to High</option>
-                    <option value="price-desc">Price: High to Low</option>
-                    <option value="rating">Highest Rated</option>
-                  </select>
-                </div>
-
-                {/* Filter Toggle */}
-                <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="flex items-center gap-2 text-sm px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  <SlidersHorizontal className="h-4 w-4" />
-                  Filters
-                  {(selectedBrands.size > 0 || inStockOnly) && (
-                    <span className="ml-1 px-1.5 py-0.5 bg-blue-500 text-white text-xs rounded-full">
-                      {selectedBrands.size + (inStockOnly ? 1 : 0)}
-                    </span>
-                  )}
-                </button>
-
-                {/* Results Count */}
-                <span className="text-sm text-gray-600 ml-auto">
-                  {filteredProducts.length} {filteredProducts.length === 1 ? 'result' : 'results'}
-                </span>
-              </div>
-            )}
-
             {/* Filter Panel */}
             {showFilters && hasProducts && !hasError && (
               <div className="mb-6 space-y-4">
@@ -264,7 +268,7 @@ export function LensResults(props: LensResultsProps) {
                 {availableBrands.length > 0 && (
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm font-medium text-gray-700">Brands</h4>
+                      <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">Brands</h4>
                       {selectedBrands.size > 0 && (
                         <button
                           onClick={() => setSelectedBrands(new Set())}
@@ -290,8 +294,8 @@ export function LensResults(props: LensResultsProps) {
                           className={cn(
                             "px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors border",
                             selectedBrands.has(brand)
-                              ? "bg-blue-100 border-blue-300 text-blue-700"
-                              : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                              ? "bg-blue-100 border-blue-300 text-blue-700 dark:bg-blue-900 dark:border-blue-700 dark:text-blue-200"
+                              : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-zinc-800 dark:border-zinc-600 dark:text-white dark:hover:bg-zinc-700"
                           )}
                         >
                           {brand}
@@ -303,15 +307,15 @@ export function LensResults(props: LensResultsProps) {
 
                 {/* Availability Filter */}
                 <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Availability</h4>
+                  <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Availability</h4>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setInStockOnly(!inStockOnly)}
                       className={cn(
                         "px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors border",
                         inStockOnly
-                          ? "bg-blue-100 border-blue-300 text-blue-700"
-                          : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
+                          ? "bg-blue-100 border-blue-300 text-blue-700 dark:bg-blue-900 dark:border-blue-700 dark:text-blue-200"
+                          : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-zinc-800 dark:border-zinc-600 dark:text-white dark:hover:bg-zinc-700"
                       )}
                     >
                       In stock only
@@ -358,7 +362,14 @@ export function LensResults(props: LensResultsProps) {
             ) : filteredProducts.length > 0 ? (
               <div className="grid grid-cols-2 min-[1000px]:grid-cols-3 min-[1200px]:grid-cols-4 min-[1300px]:grid-cols-5 gap-4">
                 {filteredProducts.map((product, idx) => (
-                  <ProductCard key={product.id || idx} product={product} />
+                  <ProductCard 
+                    key={product.id || idx} 
+                    product={product}
+                    onClick={() => {
+                      setSelectedProduct(product);
+                      setIsDrawerOpen(true);
+                    }}
+                  />
                 ))}
               </div>
             ) : hasProducts ? (
@@ -391,13 +402,29 @@ export function LensResults(props: LensResultsProps) {
               </div>
             )}
           </div>
+          {/* Product Detail Drawer */}
+          <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} modal={false}>
+            <DrawerContent
+              shouldStretch={false}
+              overlayClassName="bg-black/40"
+              portalProps={{ container: typeof document !== 'undefined' ? document.querySelector('[data-artifact-panel]') : undefined }}
+              className="absolute left-0 right-0 bottom-0 w-full max-h-[60vh] bg-white-soft dark:bg-zinc-900 border-t border-gray-200"
+            >
+              {selectedProduct && (
+                <ProductDetailDrawer 
+                  product={selectedProduct} 
+                  onClose={() => setIsDrawerOpen(false)}
+                />
+              )}
+            </DrawerContent>
+          </Drawer>
         </ArtifactComp>
       ) : null}
     </>
   );
 }
 
-function ProductCard({ product }: { product: Product }) {
+function ProductCard({ product, onClick }: { product: Product; onClick?: () => void }) {
   const hasPrice = product.price > 0;
   const inStock = product.in_stock;
 
@@ -409,11 +436,9 @@ function ProductCard({ product }: { product: Product }) {
   };
 
   return (
-    <a
-      href={product.product_url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group block rounded-lg border border-gray-200 bg-white hover:shadow-md transition-shadow overflow-hidden min-w-[180px]"
+    <button
+      onClick={onClick}
+      className="group block rounded-lg border border-gray-200 bg-white hover:shadow-md transition-shadow overflow-hidden min-w-[180px] dark:bg-zinc-800 dark:border-zinc-700 text-left w-full"
     >
       {/* Product Image */}
       <div className="aspect-square bg-gray-100 relative overflow-hidden">
@@ -450,25 +475,161 @@ function ProductCard({ product }: { product: Product }) {
       <div className="p-4">
         {/* Brand */}
         {product.brand && (
-          <p className="text-xs text-gray-500 mb-1 truncate">{product.brand}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 truncate">{product.brand}</p>
         )}
 
         {/* Name */}
-        <h4 className="text-sm font-medium text-gray-900 mb-2 line-clamp-2 min-h-[2.5rem]">
+        <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2 line-clamp-2 min-h-[2.5rem]">
           {product.name}
         </h4>
 
         {/* Price */}
         {hasPrice ? (
           <div className="flex items-baseline gap-1">
-            <span className="text-lg font-semibold text-gray-900">
+            <span className="text-lg font-semibold text-gray-900 dark:text-white">
               {formatPrice(product.price, product.currency)}
             </span>
           </div>
         ) : (
-          <p className="text-sm text-gray-500">Price not available</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Price not available</p>
         )}
       </div>
-    </a>
+    </button>
+  );
+}
+
+function ProductDetailDrawer({ product, onClose }: { product: Product; onClose: () => void }) {
+  const hasPrice = product.price > 0;
+  const inStock = product.in_stock;
+
+  // Format price with currency symbol
+  const formatPrice = (price: number, currency: string) => {
+    const currencySymbol = currency.replace(/[^$£€¥]/g, '') || '$';
+    return `${currencySymbol}${price.toFixed(0)}`;
+  };
+
+  return (
+    <>
+      <DrawerHeader className="flex-shrink-0">
+        <div className="flex items-start justify-between">
+          <div className="flex-1 min-w-0">
+            <DrawerTitle className="text-xl font-semibold text-gray-900 dark:text-white pr-8">
+              {product.name}
+            </DrawerTitle>
+            {product.brand && (
+              <DrawerDescription className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {product.brand}
+              </DrawerDescription>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </button>
+        </div>
+      </DrawerHeader>
+
+      <div className="px-4 pb-4">
+        {/* Product Image */}
+        <div className="mb-6">
+          <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden max-w-md mx-auto">
+            {product.image ? (
+              <img
+                src={product.image}
+                alt={product.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Package className="h-24 w-24 text-gray-400" />
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Price and Stock */}
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            {hasPrice ? (
+              <div className="text-3xl font-bold text-gray-900 dark:text-white">
+                {formatPrice(product.price, product.currency)}
+              </div>
+            ) : (
+              <p className="text-lg text-gray-500 dark:text-gray-400">Price not available</p>
+            )}
+          </div>
+          {inStock === true && (
+            <span className="px-3 py-1.5 rounded-full text-sm font-medium bg-green-100 text-green-700">
+              In Stock
+            </span>
+          )}
+          {inStock === false && (
+            <span className="px-3 py-1.5 rounded-full text-sm font-medium bg-red-100 text-red-700">
+              Out of Stock
+            </span>
+          )}
+        </div>
+
+        {/* Rating */}
+        {product.rating && (
+          <div className="mb-6 flex items-center gap-2">
+            <div className="flex items-center">
+              <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+              <span className="ml-1 text-lg font-semibold text-gray-900 dark:text-white">
+                {product.rating.toFixed(1)}
+              </span>
+            </div>
+            {product.reviews && (
+              <span className="text-sm text-gray-600 dark:text-gray-400">
+                ({product.reviews.toLocaleString()} reviews)
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Description */}
+        {product.description && (
+          <div className="mb-6">
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Description</h4>
+            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+              {product.description}
+            </p>
+          </div>
+        )}
+
+        {/* Attributes */}
+        {product.attributes && Object.keys(product.attributes).length > 0 && (
+          <div className="mb-6">
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Details</h4>
+            <dl className="grid grid-cols-2 gap-3">
+              {Object.entries(product.attributes).map(([key, value]) => (
+                <div key={key} className="text-sm">
+                  <dt className="font-medium text-gray-600 dark:text-gray-400 capitalize">
+                    {key.replace(/_/g, ' ')}
+                  </dt>
+                  <dd className="text-gray-900 dark:text-white mt-0.5">
+                    {String(value)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
+
+        {/* View Product Button */}
+        <a
+          href={product.product_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-accent-2 hover:bg-accent-2/90 text-white font-medium rounded-lg transition-colors"
+        >
+          View Product
+          <ExternalLink className="h-4 w-4" />
+        </a>
+      </div>
+    </>
   );
 }

@@ -7,6 +7,8 @@ import { Thread } from "@langchain/langgraph-sdk";
 import { useRouter, usePathname } from "next/navigation";
 import { getContentString } from "../../lib/utils";
 import { ThreadActions } from "./thread-actions";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "../ui/empty";
+import { MessageSquare } from "lucide-react";
 
 
 function ThreadList({
@@ -20,6 +22,25 @@ function ThreadList({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+
+  // Show empty state when there are no threads
+  if (threads.length === 0) {
+    return (
+      <div className="flex h-full w-full items-center justify-center p-4">
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <MessageSquare />
+            </EmptyMedia>
+            <EmptyTitle>No conversations yet</EmptyTitle>
+            <EmptyDescription>
+              Start a new chat to see your conversation history here
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full w-full flex-col items-start justify-start gap-1 overflow-y-scroll [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-gray-300 [&::-webkit-scrollbar-track]:bg-transparent">
