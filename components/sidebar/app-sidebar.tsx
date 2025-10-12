@@ -1,3 +1,5 @@
+"use client";
+
 import { Sheet, SheetContent } from "../ui/sheet";
 import { motion } from "framer-motion";
 import ChatHistory from "./chat-history";
@@ -6,6 +8,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { PanelRightOpen, PanelRightClose, Search, ShoppingBag, BookOpen, Archive, Sparkles } from "lucide-react";
 import { TooltipIconButton } from "../ui/tooltip-icon-button";
+import { SearchCommandDialog } from "../search-command-dialog";
+import { useState } from "react";
 
 interface ChatSidebarProps {
   chatHistoryOpen: boolean;
@@ -16,6 +20,7 @@ interface ChatSidebarProps {
 }
 
 export default function ChatSidebar({ chatHistoryOpen, toggleSidebar, isLargeScreen, sidebarMotionProps, SIDEBAR_WIDTH_PX }: ChatSidebarProps) {
+  const [searchOpen, setSearchOpen] = useState(false);
 
   return (
     <>
@@ -46,10 +51,13 @@ export default function ChatSidebar({ chatHistoryOpen, toggleSidebar, isLargeScr
             <nav className="mt-3 px-2 mb-6">
               <ul className="flex flex-col gap-1">
                 <li>
-                  <Link href="/search" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+                  <button
+                    onClick={() => setSearchOpen(true)}
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                  >
                     <Search className="size-4 text-muted-foreground" />
                     <span>Search chats</span>
-                  </Link>
+                  </button>
                 </li>
                 <li>
                   <Link href="/products" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
@@ -128,10 +136,13 @@ export default function ChatSidebar({ chatHistoryOpen, toggleSidebar, isLargeScr
                 <nav className="mt-3 px-2 mb-6">
                   <ul className="flex flex-col gap-1">
                     <li>
-                      <Link href="/search" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+                      <button
+                        onClick={() => setSearchOpen(true)}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                      >
                         <Search className="size-4 text-muted-foreground" />
                         <span>Search chats</span>
-                      </Link>
+                      </button>
                     </li>
                     <li>
                       <Link href="/products" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
@@ -175,6 +186,7 @@ export default function ChatSidebar({ chatHistoryOpen, toggleSidebar, isLargeScr
           </SheetContent>
         </Sheet>
       </div>
+      <SearchCommandDialog open={searchOpen} onOpenChange={setSearchOpen} />
     </>
   );
 }

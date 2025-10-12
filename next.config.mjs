@@ -15,6 +15,16 @@ const nextConfig = {
       },
     ],
   },
+  webpack: (config, { isServer }) => {
+    // Optimize webpack cache to avoid serialization warnings
+    if (!isServer) {
+      config.cache = {
+        ...config.cache,
+        maxMemoryGenerations: 1,
+      };
+    }
+    return config;
+  },
 };
 
 export default withSentryConfig(nextConfig, {
