@@ -2,14 +2,13 @@
 
 import React, { useState, useMemo } from "react";
 import { useStreamContext as useReactUIStreamContext } from "@langchain/langgraph-sdk/react-ui";
-import { Package, AlertCircle, SlidersHorizontal, X, ExternalLink, Star } from "lucide-react";
+import { Package, AlertCircle, SlidersHorizontal, Star } from "lucide-react";
 import { cn } from "../../../lib/utils";
+import { ShoppingCart, Heart, Search, TrendingUp, MessageSquare } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
-  DrawerHeader,
   DrawerTitle,
-  DrawerDescription,
 } from "../../ui/drawer";
 
 type Product = {
@@ -17,11 +16,11 @@ type Product = {
   name: string;
   price: number;
   image: string;
+  image_full?: string;
   brand: string;
   currency: string;
   description: string;
   product_url: string;
-  // Metadata from SerpAPI
   rating?: number;
   reviews?: number;
   in_stock?: boolean;
@@ -403,7 +402,7 @@ export function LensResults(props: LensResultsProps) {
             )}
           </div>
           {/* Product Detail Drawer */}
-          <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen} modal={false}>
+          <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
             <DrawerContent
               shouldStretch={false}
               overlayClassName="bg-black/40"
@@ -510,125 +509,174 @@ function ProductDetailDrawer({ product, onClose }: { product: Product; onClose: 
 
   return (
     <>
-      <DrawerHeader className="flex-shrink-0">
-        <div className="flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <DrawerTitle className="text-xl font-semibold text-gray-900 dark:text-white pr-8">
-              {product.name}
-            </DrawerTitle>
-            {product.brand && (
-              <DrawerDescription className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {product.brand}
-              </DrawerDescription>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
-          >
-            <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
-          </button>
-        </div>
-      </DrawerHeader>
+      {/* Visually Hidden Title for Accessibility */}
+      <DrawerTitle className="sr-only">{product.name}</DrawerTitle>
 
-      <div className="px-4 pb-4">
-        {/* Product Image */}
-        <div className="mb-6">
-          <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden max-w-md mx-auto">
-            {product.image ? (
-              <img
-                src={product.image}
-                alt={product.name}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <Package className="h-24 w-24 text-gray-400" />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Price and Stock */}
-        <div className="mb-6 flex items-center justify-between">
+      <div className="px-4 pb-4 pt-4">
+        {/* Two Column Layout on Large Screens */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Column - Product Image Only */}
           <div>
-            {hasPrice ? (
-              <div className="text-3xl font-bold text-gray-900 dark:text-white">
-                {formatPrice(product.price, product.currency)}
-              </div>
-            ) : (
-              <p className="text-lg text-gray-500 dark:text-gray-400">Price not available</p>
-            )}
-          </div>
-          {inStock === true && (
-            <span className="px-3 py-1.5 rounded-full text-sm font-medium bg-green-100 text-green-700">
-              In Stock
-            </span>
-          )}
-          {inStock === false && (
-            <span className="px-3 py-1.5 rounded-full text-sm font-medium bg-red-100 text-red-700">
-              Out of Stock
-            </span>
-          )}
-        </div>
-
-        {/* Rating */}
-        {product.rating && (
-          <div className="mb-6 flex items-center gap-2">
-            <div className="flex items-center">
-              <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-              <span className="ml-1 text-lg font-semibold text-gray-900 dark:text-white">
-                {product.rating.toFixed(1)}
-              </span>
-            </div>
-            {product.reviews && (
-              <span className="text-sm text-gray-600 dark:text-gray-400">
-                ({product.reviews.toLocaleString()} reviews)
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Description */}
-        {product.description && (
-          <div className="mb-6">
-            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Description</h4>
-            <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-              {product.description}
-            </p>
-          </div>
-        )}
-
-        {/* Attributes */}
-        {product.attributes && Object.keys(product.attributes).length > 0 && (
-          <div className="mb-6">
-            <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Details</h4>
-            <dl className="grid grid-cols-2 gap-3">
-              {Object.entries(product.attributes).map(([key, value]) => (
-                <div key={key} className="text-sm">
-                  <dt className="font-medium text-gray-600 dark:text-gray-400 capitalize">
-                    {key.replace(/_/g, ' ')}
-                  </dt>
-                  <dd className="text-gray-900 dark:text-white mt-0.5">
-                    {String(value)}
-                  </dd>
+            <div className="bg-white dark:bg-zinc-900 lg:rounded-lg overflow-hidden lg:sticky lg:top-0 flex items-center justify-center lg:h-[60vh]">
+              {(product.image_full || product.image) ? (
+                <img
+                  src={product.image_full || product.image}
+                  alt={product.name}
+                  className="w-full h-auto lg:h-full object-contain"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <Package className="h-24 w-24 text-gray-400" />
                 </div>
-              ))}
-            </dl>
+              )}
+            </div>
           </div>
-        )}
 
-        {/* View Product Button */}
-        <a
-          href={product.product_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-accent-2 hover:bg-accent-2/90 text-white font-medium rounded-lg transition-colors"
-        >
-          View Product
-          <ExternalLink className="h-4 w-4" />
-        </a>
+          {/* Right Column - ALL Product Info */}
+          <div className="space-y-4">
+            {/* Title and Brand */}
+            <div>
+              <h3 className="text-sm lg:text-lg font-semibold text-gray-900 dark:text-white line-clamp-2">
+                {product.name}
+              </h3>
+              {product.brand && (
+                <p className="text-xs lg:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {product.brand}
+                </p>
+              )}
+            </div>
+            {/* Price and Stock */}
+            <div className="flex items-center justify-between">
+              <div>
+                {hasPrice ? (
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {formatPrice(product.price, product.currency)}
+                  </div>
+                ) : (
+                  <p className="text-lg text-gray-500 dark:text-gray-400">Price not available</p>
+                )}
+              </div>
+              {inStock === true && (
+                <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                  In Stock
+                </span>
+              )}
+              {inStock === false && (
+                <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                  Out of Stock
+                </span>
+              )}
+            </div>
+
+            {/* Rating */}
+            {product.rating && (
+              <div className="flex items-center gap-2">
+                <div className="flex items-center">
+                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                  <span className="ml-1 text-sm font-semibold text-gray-900 dark:text-white">
+                    {product.rating.toFixed(1)}
+                  </span>
+                </div>
+                {product.reviews && (
+                  <span className="text-xs text-gray-600 dark:text-gray-400">
+                    ({product.reviews.toLocaleString()} reviews)
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-2">
+              <a
+                href={product.product_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 bg-accent-2 hover:bg-accent-2/90 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                <ShoppingCart className="h-4 w-4" />
+                Buy Product
+              </a>
+              <button className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-zinc-600 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors">
+                <Heart className="h-4 w-4" />
+                Select To Try
+              </button>
+              <button className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-zinc-600 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors">
+                <Search className="h-4 w-4" />
+                Find Similar
+              </button>
+              <button className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-zinc-600 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors">
+                <TrendingUp className="h-4 w-4" />
+                Track Price
+              </button>
+            </div>
+
+            {/* Description */}
+            {product.description && (
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Description</h4>
+                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                  {product.description}
+                </p>
+              </div>
+            )}
+
+            {/* Attributes */}
+            {product.attributes && Object.keys(product.attributes).length > 0 && (
+              <div>
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Details</h4>
+                <dl className="grid grid-cols-2 gap-2">
+                  {Object.entries(product.attributes).map(([key, value]) => (
+                    <div key={key} className="text-xs">
+                      <dt className="font-medium text-gray-600 dark:text-gray-400 capitalize">
+                        {key.replace(/_/g, ' ')}
+                      </dt>
+                      <dd className="text-gray-900 dark:text-white mt-0.5">
+                        {String(value)}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
+
+            {/* What People Are Saying */}
+            <div className="pt-4 border-t border-gray-200 dark:border-zinc-700">
+              <div className="flex items-center gap-2 mb-3">
+                <MessageSquare className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">What People Are Saying</h4>
+              </div>
+              <div className="space-y-3">
+                <div className="p-3 bg-gray-50 dark:bg-zinc-800/50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="flex">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                      ))}
+                    </div>
+                    <span className="text-xs font-medium text-gray-900 dark:text-white">Sarah M.</span>
+                  </div>
+                  <p className="text-xs text-gray-700 dark:text-gray-300">
+                    "Absolutely love this! The quality exceeded my expectations and it fits perfectly."
+                  </p>
+                </div>
+                <div className="p-3 bg-gray-50 dark:bg-zinc-800/50 rounded-lg">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="flex">
+                      {[...Array(4)].map((_, i) => (
+                        <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                      ))}
+                      <Star className="h-3 w-3 text-gray-300" />
+                    </div>
+                    <span className="text-xs font-medium text-gray-900 dark:text-white">Mike R.</span>
+                  </div>
+                  <p className="text-xs text-gray-700 dark:text-gray-300">
+                    "Great value for money. Shipping was fast and the product matches the description."
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </>
   );
