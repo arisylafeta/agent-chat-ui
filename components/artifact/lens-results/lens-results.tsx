@@ -10,6 +10,7 @@ import {
   DrawerContent,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import posthog from "posthog-js";
 
 type Product = {
   id: string;
@@ -236,6 +237,21 @@ export function LensResults(props: LensResultsProps) {
                       {selectedBrands.size + (inStockOnly ? 1 : 0)}
                     </span>
                   )}
+                </button>
+
+                {/* Test PostHog Event Button */}
+                <button
+                  onClick={() => {
+                    posthog.capture('test_event', { 
+                      property: 'value',
+                      timestamp: new Date().toISOString(),
+                      products_count: filteredProducts.length
+                    });
+                    alert('PostHog test event sent! Check your PostHog dashboard.');
+                  }}
+                  className="flex items-center gap-2 text-sm px-3 py-1.5 border border-accent-2 rounded-md bg-accent-2 text-white hover:bg-accent-2/90"
+                >
+                  📊 Test Analytics
                 </button>
 
                 {/* Results Count */}

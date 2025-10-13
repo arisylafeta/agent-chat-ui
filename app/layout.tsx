@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   title: "Reoutfit",
   description: "Buy and Style with AI",
   icons: {
-    icon: '/logo.png',
+    icon: "/logo.png",
   },
 };
 
@@ -25,7 +25,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+    >
       <body className={inter.className}>
         <ThemeProvider>
           <NuqsAdapter>{children}</NuqsAdapter>

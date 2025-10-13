@@ -28,3 +28,18 @@ Sentry.init({
 });
 
 export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+
+// PostHog initialization
+import posthog from 'posthog-js'
+
+posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY || '', {
+    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || '',
+    defaults: '2025-05-24'
+});
+
+// Microsoft Clarity initialization
+import clarity from '@microsoft/clarity';
+
+if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_CLARITY_ID) {
+    clarity.init(process.env.NEXT_PUBLIC_CLARITY_ID);
+}
