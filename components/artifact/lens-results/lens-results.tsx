@@ -3,13 +3,13 @@
 import React, { useState, useMemo } from "react";
 import { useStreamContext as useReactUIStreamContext } from "@langchain/langgraph-sdk/react-ui";
 import { Package, AlertCircle, SlidersHorizontal, Star } from "lucide-react";
-import { cn } from "../../../lib/utils";
+import { cn } from "@/lib/utils";
 import { ShoppingCart, Heart, Search, TrendingUp, MessageSquare } from "lucide-react";
 import {
   Drawer,
   DrawerContent,
   DrawerTitle,
-} from "../../ui/drawer";
+} from "@/components/ui/drawer";
 
 type Product = {
   id: string;

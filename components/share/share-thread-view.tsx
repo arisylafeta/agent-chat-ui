@@ -11,6 +11,7 @@ import { StickToBottom } from "use-stick-to-bottom";
 import { cn } from "@/lib/utils";
 import { useChatArtifact } from "@/hooks/use-chat-artifact";
 import { useStreamContext } from "@/providers/Stream";
+import { useThreads } from "@/providers/Thread";
 
 interface ShareThreadViewProps {
   threadId: string;
@@ -21,11 +22,13 @@ export function ShareThreadView({ threadId, threadName }: ShareThreadViewProps) 
   const [loginDialogOpen, setLoginDialogOpen] = useState(false);
   const [_threadIdQuery, setThreadIdQuery] = useQueryState("threadId");
   const stream = useStreamContext();
+  const { setCurrentThreadId } = useThreads();
 
-  // Set threadId in URL query for StreamProvider
+  // Set threadId in context and URL query for StreamProvider
   useEffect(() => {
+    setCurrentThreadId(threadId);
     setThreadIdQuery(threadId);
-  }, [threadId, setThreadIdQuery]);
+  }, [threadId, setCurrentThreadId, setThreadIdQuery]);
   
   const {
     artifactOpen,
