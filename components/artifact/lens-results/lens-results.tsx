@@ -65,6 +65,23 @@ export function LensResults(props: LensResultsProps) {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
   const [inStockOnly, setInStockOnly] = useState(false);
+
+  // Track search results loaded
+  React.useEffect(() => {
+    if (hasProducts && !props.isStreaming) {
+      posthog.capture('search_results_loaded', {
+        product_count: products.length,
+        has_error: hasError,
+        search_title: props.title,
+      });
+    }
+    if (hasError) {
+      posthog.capture('search_error', {
+        error_message: props.errorMessage,
+        search_title: props.title,
+      });
+    }
+  }, [hasProducts, hasError, products.length, props.isStreaming, props.title, props.errorMessage]);
   
   // Drawer state
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -215,7 +232,14 @@ export function LensResults(props: LensResultsProps) {
                   <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Sort:</label>
                   <select
                     value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
+                    onChange={(e) => {
+                      const newSort = e.target.value as any;
+                      setSortBy(newSort);
+                      posthog.capture('sort_changed', {
+                        sort_by: newSort,
+                        product_count: filteredProducts.length,
+                      });
+                    }}
                     className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white dark:bg-zinc-800 dark:border-zinc-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="relevance">Relevance</option>
@@ -227,7 +251,15 @@ export function LensResults(props: LensResultsProps) {
 
                 {/* Filter Toggle */}
                 <button
-                  onClick={() => setShowFilters(!showFilters)}
+                  onClick={() => {
+                    const newShowFilters = !showFilters;
+                    setShowFilters(newShowFilters);
+                    if (newShowFilters) {
+                      posthog.capture('filters_opened', {
+                        product_count: filteredProducts.length,
+                      });
+                    }
+                  }}
                   className="flex items-center gap-2 text-sm px-3 py-1.5 border border-gray-300 rounded-md bg-white hover:bg-gray-50 dark:bg-zinc-800 dark:border-zinc-600 dark:text-white dark:hover:bg-zinc-700"
                 >
                   <SlidersHorizontal className="h-4 w-4" />
@@ -237,21 +269,6 @@ export function LensResults(props: LensResultsProps) {
                       {selectedBrands.size + (inStockOnly ? 1 : 0)}
                     </span>
                   )}
-                </button>
-
-                {/* Test PostHog Event Button */}
-                <button
-                  onClick={() => {
-                    posthog.capture('test_event', { 
-                      property: 'value',
-                      timestamp: new Date().toISOString(),
-                      products_count: filteredProducts.length
-                    });
-                    alert('PostHog test event sent! Check your PostHog dashboard.');
-                  }}
-                  className="flex items-center gap-2 text-sm px-3 py-1.5 border border-accent-2 rounded-md bg-accent-2 text-white hover:bg-accent-2/90"
-                >
-                  📊 Test Analytics
                 </button>
 
                 {/* Results Count */}
@@ -299,12 +316,18 @@ export function LensResults(props: LensResultsProps) {
                           key={brand}
                           onClick={() => {
                             const newSet = new Set(selectedBrands);
+                            const isAdding = !selectedBrands.has(brand);
                             if (selectedBrands.has(brand)) {
                               newSet.delete(brand);
                             } else {
                               newSet.add(brand);
                             }
                             setSelectedBrands(newSet);
+                            posthog.capture('brand_filter_toggled', {
+                              brand: brand,
+                              action: isAdding ? 'added' : 'removed',
+                              total_brands_selected: newSet.size,
+                            });
                           }}
                           className={cn(
                             "px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors border",
@@ -325,7 +348,13 @@ export function LensResults(props: LensResultsProps) {
                   <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Availability</h4>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setInStockOnly(!inStockOnly)}
+                      onClick={() => {
+                        const newValue = !inStockOnly;
+                        setInStockOnly(newValue);
+                        posthog.capture('in_stock_filter_toggled', {
+                          enabled: newValue,
+                        });
+                      }}
                       className={cn(
                         "px-3 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors border",
                         inStockOnly
@@ -383,6 +412,14 @@ export function LensResults(props: LensResultsProps) {
                     onClick={() => {
                       setSelectedProduct(product);
                       setIsDrawerOpen(true);
+                      posthog.capture('product_card_clicked', {
+                        product_id: product.id,
+                        product_name: product.name,
+                        product_brand: product.brand,
+                        product_price: product.price,
+                        product_position: idx + 1,
+                        in_stock: product.in_stock,
+                      });
                     }}
                   />
                 ))}
@@ -607,20 +644,62 @@ function ProductDetailDrawer({ product, onClose }: { product: Product; onClose: 
                 href={product.product_url}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => {
+                  posthog.capture('buy_product_clicked', {
+                    product_id: product.id,
+                    product_name: product.name,
+                    product_brand: product.brand,
+                    product_price: product.price,
+                    product_url: product.product_url,
+                    in_stock: product.in_stock,
+                    has_rating: !!product.rating,
+                    rating: product.rating,
+                  });
+                }}
                 className="flex items-center justify-center gap-2 px-4 py-2.5 bg-accent-2 hover:bg-accent-2/90 text-white text-sm font-medium rounded-lg transition-colors"
               >
                 <ShoppingCart className="h-4 w-4" />
                 Buy Product
               </a>
-              <button className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-zinc-600 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors">
+              <button 
+                onClick={() => {
+                  posthog.capture('select_to_try_clicked', {
+                    product_id: product.id,
+                    product_name: product.name,
+                    product_brand: product.brand,
+                    product_price: product.price,
+                  });
+                }}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-zinc-600 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors"
+              >
                 <Heart className="h-4 w-4" />
                 Select To Try
               </button>
-              <button className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-zinc-600 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors">
+              <button 
+                onClick={() => {
+                  posthog.capture('find_similar_clicked', {
+                    product_id: product.id,
+                    product_name: product.name,
+                    product_brand: product.brand,
+                    product_price: product.price,
+                  });
+                }}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-zinc-600 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors"
+              >
                 <Search className="h-4 w-4" />
                 Find Similar
               </button>
-              <button className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-zinc-600 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors">
+              <button 
+                onClick={() => {
+                  posthog.capture('track_price_clicked', {
+                    product_id: product.id,
+                    product_name: product.name,
+                    product_brand: product.brand,
+                    product_price: product.price,
+                  });
+                }}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-zinc-600 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors"
+              >
                 <TrendingUp className="h-4 w-4" />
                 Track Price
               </button>
