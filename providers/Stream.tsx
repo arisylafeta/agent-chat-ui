@@ -85,6 +85,8 @@ const StreamSession = ({
   const { currentThreadId: threadId, setCurrentThreadId: setThreadId, getThreads, setThreads } = useThreads();
   const router = useRouter();
   const pathname = usePathname();
+  
+  console.log('[StreamSession] Rendering with threadId:', threadId);
 
   const defaultHeaders = useMemo(
     () => (authToken ? { Authorization: `Bearer ${authToken}` } : {}),
@@ -130,6 +132,7 @@ const StreamSession = ({
     },
   });
 
+
   useEffect(() => {
     checkGraphStatus(apiUrl, apiKey, authToken).then((ok) => {
       if (!ok) {
@@ -162,6 +165,7 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
   const assistantId = process.env.NEXT_PUBLIC_ASSISTANT_ID || "agent";
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const { currentThreadId } = useThreads();
 
   useEffect(() => {
     const supabase = createSupabaseClient();
@@ -185,8 +189,11 @@ export const StreamProvider: React.FC<{ children: ReactNode }> = ({
     return null; // Or a proper loading component if needed
   }
   
+  // Key the StreamSession by threadId to force remount when switching threads
+  // This ensures the useStream hook re-initializes with the new threadId
   return (
     <StreamSession
+      key={currentThreadId || 'no-thread'}
       apiKey={null}
       apiUrl={apiUrl}
       assistantId={assistantId}

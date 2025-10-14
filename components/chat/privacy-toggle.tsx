@@ -57,7 +57,7 @@ export function PrivacyToggle({
   };
 
   const handleCopyShareLink = () => {
-    const shareUrl = `${window.location.origin}/share/${threadId}`;
+    const shareUrl = `https://app.reoutfit.me/share/${threadId}`;
     navigator.clipboard.writeText(shareUrl);
     toast.success("Share link copied to clipboard!");
   };

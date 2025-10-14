@@ -6,6 +6,7 @@ import { BranchSwitcher, CommandBar } from "./shared";
 import { MarkdownText } from "../markdown-text";
 import { LoadExternalComponent } from "@langchain/langgraph-sdk/react-ui";
 import { LensResults } from "../artifact/lens-results";
+import { ShoppingResults } from "../artifact/shopping-results";
 import { cn } from "../../lib/utils";
 import { ToolCalls, ToolResult } from "./tool-calls";
 import { MessageContentComplex } from "@langchain/core/messages";
@@ -44,7 +45,10 @@ function CustomComponent({
           stream={thread}
           message={customComponent}
           meta={{ ui: customComponent, artifact }}
-          components={{ lens_results: LensResults }}
+          components={{ 
+            lens_results: LensResults,
+            shopping_results: ShoppingResults,
+          }}
           fallback={<div className="text-sm text-gray-500">Loading…</div>}
         />
       ))}

@@ -11,12 +11,8 @@ function isComplexValue(value: any): boolean {
 function getThinkingPhase(toolName: string): string {
   const phaseMap: Record<string, string> = {
     search: "Searching for your results...",
-    search_product_online: "Searching for visual matches...",
-    lens_search: "Searching for your results...",
-    web_search: "Searching the web now...",
-    generate: "Crafting your results now...",
-    create_outfit: "Creating your outfit now...",
-    analyze_image: "Analyzing your image now...",
+    search_product_image_online: "Searching for visual matches...",
+    search_product_online: "Searching online stores...",
     get_recommendations: "Finding recommendations for you...",
   };
   
@@ -25,7 +21,26 @@ function getThinkingPhase(toolName: string): string {
 
 // Render cleaned up tool call content based on tool type
 function renderToolCallContent(toolName: string, args: Record<string, any>) {
-  // For search-related tools, show query if available
+  // For text-based shopping search, show query
+  if (toolName === "search_product_online" && args.query) {
+    return (
+      <p className="text-xs text-gray-400 italic">
+        Query: {args.query}
+      </p>
+    );
+  }
+  
+  // For image-based search, show cleaner message
+  if (toolName === "search_product_image_online") {
+    const query = args.prompt || "uploaded image";
+    return (
+      <p className="text-xs text-gray-400 italic">
+        Searching with image of {query}
+      </p>
+    );
+  }
+  
+  // For other search tools, show query if available
   if (toolName.includes("search") && args.query) {
     return (
       <p className="text-xs text-gray-400 italic">
@@ -116,12 +131,8 @@ export function ToolCalls({
 function getResultPhase(toolName: string): string {
   const phaseMap: Record<string, string> = {
     search: "Found results for you",
-    search_product_online: "Found visual matches now",
-    lens_search: "Found results for you",
-    web_search: "Web search complete now",
-    generate: "Results are ready now",
-    create_outfit: "Outfit created for you",
-    analyze_image: "Image analysis complete now",
+    search_product_image_online: "Found visual matches",
+    search_product_online: "Found products online",
     get_recommendations: "Recommendations ready for you",
   };
   

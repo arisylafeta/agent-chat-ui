@@ -102,7 +102,15 @@ export function useChatSubmission({
     (parentCheckpoint: Checkpoint | null | undefined) => {
       prevMessageLength.current = prevMessageLength.current - 1;
       setFirstTokenReceived(false);
-      stream.submit(undefined, {
+      
+      // Find the last human message to use as input for regeneration
+      const messages = stream.messages || [];
+      const lastHumanMessage = [...messages].reverse().find(m => m.type === "human");
+      
+      // Use the last human message as input, or empty object if not found
+      const input = lastHumanMessage ? { messages: [lastHumanMessage] } : {};
+      
+      stream.submit(input, {
         checkpoint: parentCheckpoint,
         streamMode: ["values"],
         streamSubgraphs: true,
