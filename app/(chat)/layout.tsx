@@ -31,32 +31,31 @@ function ChatLayoutContent({ children }: { children: React.ReactNode }) {
   }, []); // Only run once on mount
 
   return (
-    <div className="flex h-screen w-full overflow-hidden">
-      {/* Sidebar at layout level - persists across navigation, outside StreamProvider */}
-      <ChatSidebar
-        chatHistoryOpen={chatHistoryOpen}
-        toggleSidebar={toggleSidebar}
-        isLargeScreen={isLargeScreen}
-        sidebarMotionProps={sidebarMotionProps}
-        SIDEBAR_WIDTH_PX={SIDEBAR_WIDTH_PX}
-      />
-      {/* Content area with proper width adjustment */}
-      <div 
-        style={{
-          marginLeft: chatHistoryOpen && isLargeScreen ? SIDEBAR_WIDTH_PX : 0,
-          width: chatHistoryOpen && isLargeScreen ? `calc(100% - ${SIDEBAR_WIDTH_PX}px)` : '100%',
-          transition: 'margin-left 0.2s linear, width 0.2s linear',
-        }}
-        className="flex-1"
-      >
-        {/* StreamProvider wraps only the content area, not the sidebar */}
-        <StreamProvider>
-          <ArtifactProvider>
+    <StreamProvider>
+      <ArtifactProvider>
+        <div className="flex h-screen w-full overflow-hidden">
+          {/* Sidebar at layout level - persists across navigation */}
+          <ChatSidebar
+            chatHistoryOpen={chatHistoryOpen}
+            toggleSidebar={toggleSidebar}
+            isLargeScreen={isLargeScreen}
+            sidebarMotionProps={sidebarMotionProps}
+            SIDEBAR_WIDTH_PX={SIDEBAR_WIDTH_PX}
+          />
+          {/* Content area with proper width adjustment */}
+          <div 
+            style={{
+              marginLeft: chatHistoryOpen && isLargeScreen ? SIDEBAR_WIDTH_PX : 0,
+              width: chatHistoryOpen && isLargeScreen ? `calc(100% - ${SIDEBAR_WIDTH_PX}px)` : '100%',
+              transition: 'margin-left 0.2s linear, width 0.2s linear',
+            }}
+            className="flex-1"
+          >
             {children}
-          </ArtifactProvider>
-        </StreamProvider>
-      </div>
-    </div>
+          </div>
+        </div>
+      </ArtifactProvider>
+    </StreamProvider>
   );
 }
 
