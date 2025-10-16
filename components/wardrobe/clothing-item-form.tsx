@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Sparkle, Sparkles, Upload, X } from 'lucide-react';
+import { Loader2, Sparkles, Upload, X } from 'lucide-react';
 import Image from 'next/image';
 
 interface ClothingItemFormProps {

@@ -91,12 +91,14 @@ export async function POST(request: NextRequest) {
       // Extract the generated image from response
       let prettifiedImageDataUrl = originalImageDataUrl;
       
-      for (const part of response.candidates[0].content.parts) {
-        if (part.inlineData) {
-          const generatedImageData = part.inlineData.data;
-          const mimeType = part.inlineData.mimeType || image.type;
-          prettifiedImageDataUrl = `data:${mimeType};base64,${generatedImageData}`;
-          break;
+      if (response.candidates && response.candidates[0]?.content?.parts) {
+        for (const part of response.candidates[0].content.parts) {
+          if (part.inlineData) {
+            const generatedImageData = part.inlineData.data;
+            const mimeType = part.inlineData.mimeType || image.type;
+            prettifiedImageDataUrl = `data:${mimeType};base64,${generatedImageData}`;
+            break;
+          }
         }
       }
 

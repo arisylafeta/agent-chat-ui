@@ -157,7 +157,7 @@ export async function DELETE(
         if (pathParts.length > 1) {
           filePath = pathParts[1];
         }
-      } catch (_e) {
+      } catch {
         console.warn('Could not parse image URL for deletion:', imageUrl);
       }
     }

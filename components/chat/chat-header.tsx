@@ -3,7 +3,6 @@ import { PanelRightOpen, PanelRightClose, Plus, Puzzle } from "lucide-react";
 import Image from "next/image";
 import { PrivacyToggle } from "./privacy-toggle";
 import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
 
 export function ChatHeader(props: {
   chatStarted: boolean;
