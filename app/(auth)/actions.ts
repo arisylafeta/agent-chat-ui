@@ -60,7 +60,7 @@ export async function signInWithGoogle() {
 }
 
 
-export async function loginUser(currentState: { message: string }, formData: FormData) {
+export async function loginUser(currentState: { message: string; success?: boolean }, formData: FormData) {
   const supabase = await createClient()
 
   const data = {
@@ -71,7 +71,7 @@ export async function loginUser(currentState: { message: string }, formData: For
   const { error } = await supabase.auth.signInWithPassword(data)
 
   if (error) {
-      return { message: error.message }
+      return { message: error.message, success: false }
   }
 
   revalidatePath('/', 'layout')
@@ -98,7 +98,7 @@ export async function requestPasswordReset(currentState: { message: string; ok?:
   }
 }
 
-export async function signupUser(currentState: { message: string }, formData: FormData) {
+export async function signupUser(currentState: { message: string; success?: boolean }, formData: FormData) {
   const supabase = await createClient()
 
   const data = {
@@ -109,11 +109,13 @@ export async function signupUser(currentState: { message: string }, formData: Fo
   const { error } = await supabase.auth.signUp(data)
 
   if (error) {
-      return { message: error.message }
+      return { message: error.message, success: false }
   }
 
-  revalidatePath('/', 'layout')
-  redirect('/')
+  return { 
+    message: 'Account created successfully! Please check your email to confirm your account.',
+    success: true 
+  }
 }
 
 

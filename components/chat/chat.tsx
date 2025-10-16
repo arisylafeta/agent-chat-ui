@@ -204,7 +204,7 @@ export function Thread() {
     if (id === null) {
       router.push('/');
     } else {
-      router.push(`/${id}`);
+      router.push(`/chat/${id}`);
     }
   }, [router, closeArtifact, setArtifactContext]);
 

@@ -121,11 +121,11 @@ const StreamSession = ({
         });
       });
       
-      // Navigate to /[threadId] if we're on the home page and a new thread was created
+      // Navigate to /chat/[threadId] if we're on the home page and a new thread was created
       // Use replace to update URL without breaking the stream (same layout, providers persist)
       if (pathname === '/' && id) {
-        console.log('[StreamProvider] Navigating to /', id);
-        router.replace(`/${id}`);
+        console.log('[StreamProvider] Navigating to /chat/', id);
+        router.replace(`/chat/${id}`);
       }
     },
   });

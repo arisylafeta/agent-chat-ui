@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useActionState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 import { loginUser, signupUser } from '@/app/(auth)/actions';
 import GlassInputWrapper from '@/components/ui/glass-input-wrapper'
@@ -25,7 +25,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   heroImageSrc = '', //replace with image from internet
 }) => {
   const [showPassword, setShowPassword] = useState(false);
-  type LoginState = { message: string }
+  type LoginState = { message: string; success?: boolean }
   const actionFn = mode === 'signup' ? signupUser : loginUser
   const [loginState, loginAction] = useActionState<LoginState, FormData>(actionFn, { message: '' })
 
@@ -45,6 +45,20 @@ export const SignInPage: React.FC<SignInPageProps> = ({
           <div className="flex flex-col gap-6">
             <h1 className="animate-element animate-delay-100 text-4xl md:text-5xl font-semibold leading-tight">{title}</h1>
             <p className="animate-element animate-delay-200 text-muted-foreground">{description}</p>
+
+            {loginState?.success && (
+              <div className="animate-element flex items-start gap-3 p-4 rounded-2xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20">
+                <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                    {loginState.message}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    You can now <Link href="/login" className="text-accent-2 hover:underline">sign in</Link> once you've confirmed your email.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <form className="space-y-5" action={loginAction}>
               <div className="animate-element animate-delay-300">
@@ -77,7 +91,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
               <button type="submit" className="animate-element animate-delay-600 w-full rounded-2xl bg-primary py-4 font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
                 {mode === 'signup' ? 'Create Account' : 'Sign In'}
               </button>
-              {loginState?.message && (
+              {loginState?.message && !loginState?.success && (
                 <p className="text-sm text-red-500 text-center">{loginState.message}</p>
               )}
             </form>

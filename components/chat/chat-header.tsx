@@ -1,7 +1,9 @@
 import { TooltipIconButton } from "../ui/tooltip-icon-button";
-import { PanelRightOpen, PanelRightClose, Plus } from "lucide-react";
+import { PanelRightOpen, PanelRightClose, Plus, Puzzle } from "lucide-react";
 import Image from "next/image";
 import { PrivacyToggle } from "./privacy-toggle";
+import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
 
 export function ChatHeader(props: {
   chatStarted: boolean;
@@ -49,14 +51,15 @@ export function ChatHeader(props: {
           </TooltipIconButton>
         )}
 
-        <TooltipIconButton
-          tooltip="New Chat"
-          aria-label="New Chat"
-          onClick={onNewThread}
-          variant="outline"
-        >
-          <Plus className="size-5" />
-        </TooltipIconButton>
+          <TooltipIconButton
+            tooltip="New Chat"
+            aria-label="New Chat"
+            onClick={onNewThread}
+            variant="outline"
+          >
+            <Plus className="size-5" />
+          </TooltipIconButton>
+
 
         {/* Privacy Toggle - only show if thread exists */}
         {threadId && (
@@ -68,8 +71,30 @@ export function ChatHeader(props: {
         )}
       </div>
 
-      {/* Right: Wordmark */}
-      <div className="ml-auto">
+      {/* Right: Studio Button and Wordmark */}
+      <div className="ml-auto flex items-center gap-2">
+        {/* Studio Button - always visible */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="relative"
+          onClick={() => {
+            // TODO: Navigate to studio/wardrobe
+            console.log('Studio clicked');
+          }}
+        >
+          <Puzzle className="size-4 mr-2" />
+          Studio
+          {/* Badge for selected items count - will be implemented later */}
+          {/* <Badge 
+            variant="secondary" 
+            className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+          >
+            0
+          </Badge> */}
+        </Button>
+
+        {/* Logo */}
         {!opened && (
           <Image
             src="/logo.png"

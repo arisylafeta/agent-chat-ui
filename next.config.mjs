@@ -5,6 +5,8 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
+    // Optimize compilation speed
+    optimizePackageImports: ['lucide-react', '@supabase/supabase-js'],
   },
   images: {
     remotePatterns: [
@@ -15,7 +17,7 @@ const nextConfig = {
       },
     ],
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
     // Optimize webpack cache to avoid serialization warnings
     if (!isServer) {
       config.cache = {
@@ -23,6 +25,17 @@ const nextConfig = {
         maxMemoryGenerations: 1,
       };
     }
+    
+    // Speed up development builds
+    if (dev) {
+      config.optimization = {
+        ...config.optimization,
+        removeAvailableModules: false,
+        removeEmptyChunks: false,
+        splitChunks: false,
+      };
+    }
+    
     return config;
   },
   async rewrites() {

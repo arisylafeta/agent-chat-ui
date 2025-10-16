@@ -4,6 +4,8 @@ import { Inter } from "next/font/google";
 import React from "react";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { ThemeProvider } from "@/components/theme-provider";
+import { RootLayoutWrapper } from "@/components/layout/root-layout-wrapper";
+import { SidebarProvider } from "@/providers/Sidebar";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -31,7 +33,11 @@ export default function RootLayout({
     >
       <body className={inter.className}>
         <ThemeProvider>
-          <NuqsAdapter>{children}</NuqsAdapter>
+          <NuqsAdapter>
+            <SidebarProvider>
+              <RootLayoutWrapper>{children}</RootLayoutWrapper>
+            </SidebarProvider>
+          </NuqsAdapter>
         </ThemeProvider>
       </body>
     </html>

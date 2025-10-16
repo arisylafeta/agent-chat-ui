@@ -61,7 +61,7 @@ export function SearchCommandDialog({
     onOpenChange(false);
     setQuery("");
     setResults([]);
-    router.push(`/${threadId}`);
+    router.push(`/chat/${threadId}`);
   };
 
   // Extract a snippet from the message text (first 100 chars)
