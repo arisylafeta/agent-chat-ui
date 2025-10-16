@@ -91,24 +91,24 @@ export default function WardrobePage() {
       />
       
       {/* Title Section with Blob Background */}
-      <div className="relative bg-white pt-12 pb-8">
-        {/* Blob SVG Background */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
-          <svg
-            viewBox="0 0 200 200"
-            xmlns="http://www.w3.org/2000/svg"
-            className="absolute -top-10 -right-10 w-64 h-64"
-          >
-            <path
-              fill="#BFB4DC"
-              d="M46.5,-44.6C57.2,-35.9,60.7,-17.9,57.1,-3.6C53.5,10.8,42.9,21.6,32.3,32.7C21.6,43.8,10.8,55.2,-5.3,60.5C-21.4,65.8,-42.7,64.9,-56.7,53.8C-70.7,42.7,-77.3,21.4,-73.8,3.5C-70.3,-14.4,-56.7,-28.7,-42.7,-37.5C-28.7,-46.3,-14.4,-49.6,1.8,-51.3C17.9,-53.1,35.9,-53.4,46.5,-44.6Z"
-              transform="translate(100 100)"
-            />
-          </svg>
-        </div>
+      <div className="bg-white pt-12 pb-8">
+        <div className="max-w-9xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+          {/* Blob SVG Background - positioned relative to container */}
+          <div className="absolute inset-0  pointer-events-none opacity-20">
+            <svg
+              viewBox="0 0 200 200"
+              xmlns="http://www.w3.org/2000/svg"
+              className="absolute -top-20 -right-10 w-64 h-64"
+            >
+              <path
+                fill="#BFB4DC"
+                d="M46.5,-44.6C57.2,-35.9,60.7,-17.9,57.1,-3.6C53.5,10.8,42.9,21.6,32.3,32.7C21.6,43.8,10.8,55.2,-5.3,60.5C-21.4,65.8,-42.7,64.9,-56.7,53.8C-70.7,42.7,-77.3,21.4,-73.8,3.5C-70.3,-14.4,-56.7,-28.7,-42.7,-37.5C-28.7,-46.3,-14.4,-49.6,1.8,-51.3C17.9,-53.1,35.9,-53.4,46.5,-44.6Z"
+                transform="translate(100 100)"
+              />
+            </svg>
+          </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between relative z-10">
             <div>
               <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-foreground leading-tight mb-3">
                 Your{' '}
@@ -130,7 +130,7 @@ export default function WardrobePage() {
 
       {/* Filters */}
       <div className="bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="max-w-9xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <WardrobeFilters
             search={search}
             category={category}
@@ -145,7 +145,7 @@ export default function WardrobePage() {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="max-w-9xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm text-red-800">{error}</p>

@@ -149,6 +149,10 @@
   overscroll-behavior: contain;
 }
 
+@utility max-w-9xl {
+  max-width: 96rem; /* 1536px */
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
