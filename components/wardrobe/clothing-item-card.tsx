@@ -47,7 +47,7 @@ export function ClothingItemCard({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                size="md"
+                size="sm"
                 variant="outline"
                 className="h-8 w-8 p-0 bg-white-soft/90 hover:bg-white-soft backdrop-blur-sm"
                 onClick={(e) => e.stopPropagation()}
