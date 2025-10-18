@@ -83,15 +83,10 @@ export default function ChatSidebar({ chatHistoryOpen, toggleSidebar, isLargeScr
                   </div>
                 </li>
                 <li>
-                  <div className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm opacity-60 cursor-not-allowed">
-                    <div className="flex items-center gap-2">
-                      <BookOpen className="size-4 text-muted-foreground" />
-                      <span>Lookbook</span>
-                    </div>
-                    <Badge variant="secondary" className="bg-black text-white text-[10px] px-1.5 py-0 h-4 border border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
-                      Coming
-                    </Badge>
-                  </div>
+                  <Link href="/lookbook" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+                    <BookOpen className="size-4 text-muted-foreground" />
+                    <span>Lookbook</span>
+                  </Link>
                 </li>
                 <li>
                   <Link href="/wardrobe" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
@@ -172,15 +167,10 @@ export default function ChatSidebar({ chatHistoryOpen, toggleSidebar, isLargeScr
                       </div>
                     </li>
                     <li>
-                      <div className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm opacity-60 cursor-not-allowed">
-                        <div className="flex items-center gap-2">
-                          <BookOpen className="size-4 text-muted-foreground" />
-                          <span>Lookbook</span>
-                        </div>
-                        <Badge variant="secondary" className="bg-black text-white-soft text-[10px] px-1.5 py-0 h-4 border border-white/10 shadow-[0_2px_8px_rgba(0,0,0,0.3)]">
-                          Coming Soon
-                        </Badge>
-                      </div>
+                      <Link href="/lookbook" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+                        <BookOpen className="size-4 text-muted-foreground" />
+                        <span>Lookbook</span>
+                      </Link>
                     </li>
                     <li>
                       <Link href="/wardrobe" className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted">

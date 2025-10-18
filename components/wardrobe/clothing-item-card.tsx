@@ -25,7 +25,7 @@ export function ClothingItemCard({
   onDelete,
 }: ClothingItemCardProps) {
   return (
-    <Card className="group relative overflow-hidden transition-all hover:shadow-lg">
+    <Card className="group relative overflow-hidden transition-all hover:shadow-lg bg-white-soft p-0 gap-0">
       {/* Image */}
       <div className="relative aspect-square overflow-hidden bg-gray-soft">
         {item.image_url ? (
@@ -77,7 +77,7 @@ export function ClothingItemCard({
       </div>
 
       {/* Content - Only Title, Brand, Category */}
-      <div className="p-4 py-2 pb-0">
+      <div className="px-4 py-3">
         {/* Title */}
         <h3 className="text-xl font-bold text-black-soft line-clamp-2">
           {item.name}
