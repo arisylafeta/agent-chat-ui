@@ -22,7 +22,7 @@ export async function GET(
 
     // Fetch item (RLS will ensure user can only access their own items)
     const { data: item, error } = await supabase
-      .from('clothing_items')
+      .from('wardrobe_items')
       .select('*')
       .eq('id', id)
       .single();
@@ -82,7 +82,7 @@ export async function PATCH(
 
     // Update item (RLS will ensure user can only update their own items)
     const { data: item, error } = await supabase
-      .from('clothing_items')
+      .from('wardrobe_items')
       .update(updateData)
       .eq('id', id)
       .select()
@@ -130,7 +130,7 @@ export async function DELETE(
 
     // First, fetch the item to get the image URL
     const { data: item, error: fetchError } = await supabase
-      .from('clothing_items')
+      .from('wardrobe_items')
       .select('image_url')
       .eq('id', id)
       .single();
@@ -164,7 +164,7 @@ export async function DELETE(
 
     // Delete the database record (RLS will ensure user can only delete their own items)
     const { error: deleteError } = await supabase
-      .from('clothing_items')
+      .from('wardrobe_items')
       .delete()
       .eq('id', id);
 

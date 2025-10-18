@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
     // Build query
     let query = supabase
-      .from('clothing_items')
+      .from('wardrobe_items')
       .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
@@ -137,9 +137,9 @@ export async function POST(request: NextRequest) {
       data: { publicUrl },
     } = supabase.storage.from('clothing-images').getPublicUrl(fileName);
 
-    // Insert clothing item record
+    // Insert wardrobe item record
     const { data: item, error: insertError } = await supabase
-      .from('clothing_items')
+      .from('wardrobe_items')
       .insert({
         user_id: user.id,
         name,
@@ -147,6 +147,7 @@ export async function POST(request: NextRequest) {
         brand: brand || null,
         image_url: publicUrl,
         size: size || null,
+        source: 'user_upload',
       })
       .select()
       .single();

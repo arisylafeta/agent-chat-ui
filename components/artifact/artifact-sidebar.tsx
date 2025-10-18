@@ -7,6 +7,7 @@ import { cn } from "../../lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMediaQuery } from "../../hooks/use-media-queries";
 import { useQueryState, parseAsBoolean } from "nuqs";
+import { StudioToggle } from "../studio/studio-toggle";
 
 export function ArtifactSidebar({
   onClose,
@@ -150,6 +151,8 @@ export function ArtifactSidebar({
                   <ArtifactTitle className={cn("font-medium", titleClassName)} />
                 </div>
               </div>
+
+              <StudioToggle />
             </div>
 
             <div className={cn("relative h-full items-stretch overflow-y-auto bg-gray-soft dark:bg-muted", contentClassName)} data-artifact-content>

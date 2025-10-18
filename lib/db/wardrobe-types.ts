@@ -1,6 +1,8 @@
 // TypeScript types for wardrobe management
 
-export interface ClothingItem {
+export type SourceType = 'user_upload' | 'affiliate_product' | 'search_result';
+
+export interface WardrobeItem {
   id: string;
   user_id: string;
   name: string;
@@ -16,29 +18,40 @@ export interface ClothingItem {
   gender?: string;
   size?: string;
   notes?: string;
+  source?: SourceType;
+  source_ref_id?: string;
+  affiliate_product_id?: string;
+  search_result_id?: string;
   created_at: string;
   updated_at: string;
 }
 
-export type ClothingItemInsert = Omit<
-  ClothingItem,
+// Legacy alias for backwards compatibility
+export type ClothingItem = WardrobeItem;
+
+export type WardrobeItemInsert = Omit<
+  WardrobeItem,
   'id' | 'created_at' | 'updated_at'
 >;
 
-export type ClothingItemUpdate = Partial<
-  Omit<ClothingItem, 'id' | 'user_id' | 'created_at' | 'updated_at'>
+export type WardrobeItemUpdate = Partial<
+  Omit<WardrobeItem, 'id' | 'user_id' | 'created_at' | 'updated_at'>
 >;
+
+// Legacy aliases
+export type ClothingItemInsert = WardrobeItemInsert;
+export type ClothingItemUpdate = WardrobeItemUpdate;
 
 // API response types
 export interface WardrobeListResponse {
-  items: ClothingItem[];
+  items: WardrobeItem[];
   total: number;
   limit: number;
   offset: number;
 }
 
 export interface WardrobeItemResponse {
-  item: ClothingItem;
+  item: WardrobeItem;
 }
 
 export interface WardrobeDeleteResponse {

@@ -1,5 +1,9 @@
 import { z } from 'zod';
 
+// Source types
+export const sourceTypes = ['user_upload', 'affiliate_product', 'search_result'] as const;
+export type SourceType = (typeof sourceTypes)[number];
+
 // Enums
 export const clothingCategories = [
   'shirt',
@@ -40,7 +44,7 @@ export const clothingItemSchema = z.object({
 export type ClothingItemInput = z.infer<typeof clothingItemSchema>;
 
 // Database types
-export interface ClothingItem {
+export interface WardrobeItem {
   id: string;
   user_id: string;
   name: string;
@@ -57,20 +61,27 @@ export interface ClothingItem {
   notes?: string;
   tags?: string[];
   purchase_date?: string;
+  source?: SourceType;
+  source_ref_id?: string;
+  affiliate_product_id?: string;
+  search_result_id?: string;
   created_at: string;
   updated_at: string;
 }
 
+// Legacy alias for backwards compatibility
+export type ClothingItem = WardrobeItem;
+
 // API Response types
 export interface WardrobeListResponse {
-  items: ClothingItem[];
+  items: WardrobeItem[];
   total: number;
   limit: number;
   offset: number;
 }
 
 export interface WardrobeItemResponse {
-  item: ClothingItem;
+  item: WardrobeItem;
 }
 
 export interface WardrobeDeleteResponse {
