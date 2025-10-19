@@ -10,11 +10,52 @@ Build the core Studio feature as an artifact-based workspace where users can com
 
 **Target Outcome**: Users can click "Select To Try" in lens-results, open Studio, see selected products in a grid with inline "Add to Outfit" buttons, compose an outfit in the vertical column, upload/select an avatar, generate a realistic virtual try-on image using Gemini AI, and save the result to their looks collection.
 
+## Design Clarifications
+
+### Product Type Unification (Q1)
+**Decision**: Option A - Create unified `StudioProduct` type
+- Normalized interface: `{ id, title, brand, image, sourceData }`
+- `image` field uses high-quality version (`image_full` if available)
+- `sourceData` stores original product JSONB for flexibility
+- Conversion utilities: `toStudioProduct()` for both `Product` and `WardrobeItem`
+
+### Data Model (Q2)
+**Decision**: Option A - Use existing `lookbooks` table
+- No new tables needed - existing schema is sufficient
+- `lookbooks.cover_image_url` stores generated look image
+- `lookbook_wardrobe_items` junction table for product links
+- Terminology: "lookbooks" in DB, "looks" in UI (no rename needed)
+
+### Generated Image Storage (Q3)
+**Decision**: Hybrid approach (show in state, save to storage)
+- During generation: Store base64 data URL in React state (ephemeral)
+- On save: Convert to blob, upload to Supabase Storage `generated-looks` bucket
+- Store public URL in `lookbooks.cover_image_url`
+- Benefits: Fast preview, persistent storage, no CDN costs
+
+### Product Association (Q4)
+**Decision**: Option A - Save to wardrobe first, then link
+- Products from lens/shopping results → create `wardrobe_items` entry
+- Use `category='online'` for search products
+- Store original product data in `metadata` JSONB field
+- Link via `lookbook_wardrobe_items` junction table
+- Enables future wardrobe features without data duplication
+
+### Slot/Role Validation (Q5)
+**Decision**: Option D - Defer to Phase 2
+- MVP allows any 6 items without position constraints
+- Use default values: `slot='base'`, `role='other'`
+- Leave TODO comments for future validation logic
+- Phase 2 will implement proper categorization and conflict detection
+
 ## Context
 
 ### Specification
 - **Spec File**: `/Users/admin/Desktop/AI/Reoutfit/app-reoutfit/specs/003-studio-feature-for/spec.md`
 - **Feature**: Virtual Try-On Studio with outfit composition and AI-powered visualization
+- **Data Model**: `specs/003-studio-feature-for/data-model.md`
+- **Quickstart**: `specs/003-studio-feature-for/quickstart.md`
+- **API Contracts**: `specs/003-studio-feature-for/contracts/`
 
 ### Relevant Code
 - **Artifact System**: 
@@ -25,23 +66,24 @@ Build the core Studio feature as an artifact-based workspace where users can com
   - `app/api/wardrobe/prettify/route.ts` - Gemini 2.5 Flash Image integration pattern (model for generate-look API)
 - **Types**: 
   - `types/wardrobe.ts` - Product/wardrobe item types
+  - `types/studio.ts` - Studio-specific types (to be created)
 - **Existing Components**:
   - `components/studio/studio-toggle.tsx` - Studio entry point button
   - `components/chat/chat-header.tsx` - Header integration point
 - **Providers**: `providers/` - Auth and state management patterns
 - **Environment**: `GEMINI_API_KEY` - Already configured for prettify API
+- **Database**: `supabase/migrations/20251018_lookbook_schema.sql` - Existing lookbook schema
 
 ### MVP Scope Constraints
 **In Scope**:
 - Studio artifact component with responsive layout
-- **Top Action Bar**: Avatar, Products, Wardrobe buttons
+- **Top Action Bar**: Avatar, Products, Wardrobe buttons(mocked, only button)
 - **Selected Grid** (renamed from product-grid): Responsive grid (12→6→3→horizontal) with inline "Add to Outfit" buttons on each product card
 - **Current Outfit Column**: Vertical column (6 items max) with small product thumbnails and remove buttons
 - **Center Image Display**: Shows avatar or generated look
 - **Bottom Action Bar**: Generate, Save, Share, Remix buttons
-- **Avatar Selection**: Upload/select avatar functionality
 - **Generate Button**: Real Gemini 2.5 Flash Image API integration for virtual try-on
-- **Save Button**: Persists looks to Supabase database
+- **Save Button**: Persists looks to Supabase database using existing `lookbooks` table, creates wardrobe items for search products
 - State management for selected products, current outfit, and avatar
 - Integration with lens-results "Select To Try" button
 - Real API endpoints using Gemini (similar to prettify API pattern)
@@ -59,16 +101,17 @@ Build the core Studio feature as an artifact-based workspace where users can com
 
 #### Milestone 0.1: Type Definitions
 - Create `types/studio.ts` with:
-  - `StudioProduct` type (extends or adapts from lens-results Product)
-  - `StudioState` interface (selectedProducts, currentOutfit, generatedLook, isGenerating)
-  - `GeneratedLook` type (look_id, image_url, created_at)
+  - `StudioProduct` type - Unified interface with `id`, `title`, `brand`, `image` (high-quality), `sourceData` (JSONB)
+  - `StudioState` interface (selectedProducts, currentOutfit, generatedLook, isGenerating, activeDrawer)
+  - `GeneratedLook` type (imageUrl, lookbookId?)
   - API request/response types for generation and saving
+  - Type conversion utilities: `toStudioProduct()` for Product and WardrobeItem
 
 #### Milestone 0.2: State Management Setup
 - Create `providers/studio-provider.tsx`:
   - React Context for studio state
   - `useStudio()` hook for consuming state
-  - Actions: `addToSelected`, `removeFromSelected`, `moveToOutfit`, `clearSelected`, `setGeneratedLook`
+  - Actions: `addToSelected`, `removeFromSelected`, `moveToOutfit`, `removeFromOutfit`, `clearSelected`, `setGeneratedLook`
   - LocalStorage persistence for `selectedProducts` and `currentOutfit`
   - Max 6 items validation for current outfit
 
@@ -84,17 +127,20 @@ Build the core Studio feature as an artifact-based workspace where users can com
   - 30-second timeout configuration
   - Error handling with fallback
 - Create `/app/api/studio/save-look/route.ts`:
-  - POST endpoint accepting `{ look_id, product_ids[], generated_image_url, user_id }`
+  - POST endpoint accepting `{ title?, products: StudioProduct[], generatedImageBase64 }`
   - Validates authentication via Supabase
-  - Saves to Supabase `looks` table (create migration if needed)
-  - Returns `{ saved_look_id, created_at }`
+  - Uploads base64 image to Supabase Storage `generated-looks` bucket
+  - Creates entry in existing `lookbooks` table with `cover_image_url`
+  - For products from search results: creates `wardrobe_items` with `category='online'`, stores sourceData in `metadata` JSONB
+  - Links products via `lookbook_wardrobe_items` junction table (slot='base', role='other' for MVP)
+  - Returns `{ lookbookId, imageUrl, createdAt }`
 
 **Deliverables**:
 - `types/studio.ts`
 - `providers/studio-provider.tsx`
 - `app/api/studio/generate-look/route.ts` (real Gemini integration)
 - `app/api/studio/save-look/route.ts`
-- Database migration for `looks` table (if not exists)
+- Database migration for `generated-looks` storage bucket
 
 ---
 
@@ -111,10 +157,10 @@ Build the core Studio feature as an artifact-based workspace where users can com
 #### Milestone 1.2: Layout Structure
 - Create `components/artifact/studio/studio-layout.tsx`:
   - **Top Section**: Action buttons bar
-    - Left side: "Avatar", "Products", "Wardrobe" buttons (drawer triggers)
+    - Right Side: "Avatar", "Products", "Wardrobe" buttons (drawer triggers) on the side of the title. 
     - Consistent styling with artifact header
   - **Main Content**: Responsive grid layout:
-    - Desktop (lg+): Main section (left 2/3) + Selected section (right 1/3)
+    - Desktop (lg+): Main section (left 1/2) + Selected section (right 1/2)
     - Mobile: Main section (top) + Selected section (bottom, horizontal scroll)
   - **Main section** contains:
     - Center image area (avatar or generated look)
@@ -122,11 +168,12 @@ Build the core Studio feature as an artifact-based workspace where users can com
   - **Selected section**:
     - "Selected" title
     - Product grid (responsive: 12→6→3 items)
-    - Each product card has inline "Add to Outfit" button
+    - Each product card has on hover "+ Add to Outfit" button 
+    - Each product card has on hover "Remove" button 
     - Empty state message
   - **Bottom Section**: Primary action buttons
     - "Generate", "Save", "Share", "Remix" buttons
-    - Positioned below center image
+    - Positioned below main section.
     - Sticky on mobile for easy access
 
 #### Milestone 1.3: Selected Grid Component
@@ -136,6 +183,7 @@ Build the core Studio feature as an artifact-based workspace where users can com
     - Image, name, brand
     - Inline "Add to Outfit" button (icon button overlay on hover)
     - Remove button (X icon in corner)
+    - Card style is similar to @/components/wardrobe/clothing-item-card.tsx
   - Click on "Add to Outfit" moves item to outfit-column
   - Visual feedback when item is already in outfit (disabled state)
   - Empty state slots
@@ -173,7 +221,7 @@ Build the core Studio feature as an artifact-based workspace where users can com
 #### Milestone 2.1: Action Button Components
 - Create `components/artifact/studio/top-actions.tsx`:
   - Button group for drawer triggers
-  - "Avatar" button (opens avatar selection/upload)
+  - "Avatar" button (opens avatar selection/upload - mocker for MVP)
   - "Products" button (opens shopping history - mocked for MVP)
   - "Wardrobe" button (opens wardrobe items - mocked for MVP)
   - Consistent styling with artifact header
@@ -187,7 +235,7 @@ Build the core Studio feature as an artifact-based workspace where users can com
   - "Remix" button (secondary, mocked for MVP)
   - Disabled states based on context (e.g., Generate disabled if outfit empty)
   - Loading states for async actions
-  - Responsive: Stack vertically on mobile
+  - Stack vertically always, under center image and outfit-column
 
 #### Milestone 2.2: Add to Outfit Logic (Inline Buttons)
 - Implement `handleAddToOutfit(product)` in selected-grid:
@@ -197,6 +245,7 @@ Build the core Studio feature as an artifact-based workspace where users can com
   - Disables button for items already in outfit
   - Visual feedback on success
   - Updates UI immediately
+  - LEAVE TODO in code for verifying that no two items have the same layer and position(ex. two jackets, two pants) - deferred to Phase 2. 
 
 #### Milestone 2.3: Generate Button Logic
 - Implement `handleGenerate()` in studio component:
@@ -222,18 +271,10 @@ Build the core Studio feature as an artifact-based workspace where users can com
 
 #### Milestone 2.5: Mock Button Handlers
 - Implement mock handlers for future features:
-  - `handleOpenProducts()` → Toast: "Shopping history coming soon"
-  - `handleOpenWardrobe()` → Toast: "Wardrobe coming soon"
-  - `handleShare()` → Toast: "Share feature coming soon"
-  - `handleRemix()` → Toast: "Remix feature coming soon"
-
-#### Milestone 2.6: Avatar Selection
-- Implement `handleOpenAvatar()`:
-  - Opens avatar selection drawer/modal
-  - Options: Upload new avatar, select from profile avatars
-  - Image upload validation (same as prettify: JPEG/PNG/WebP, max 10MB)
-  - Preview selected avatar in center image area
-  - Stores avatar in studio state
+  - `handleOpenProducts()` → Toast: "Shopping history coming soon" add Posthog tracking
+  - `handleOpenWardrobe()` → Toast: "Wardrobe coming soon" add Posthog tracking
+  - `handleShare()` → Toast: "Share feature coming soon"  add Posthog tracking
+  - `handleRemix()` → Toast: "Remix feature coming soon" add Posthog tracking
 
 **Deliverables**:
 - `components/artifact/studio/top-actions.tsx`
@@ -255,11 +296,11 @@ Build the core Studio feature as an artifact-based workspace where users can com
   - Update PostHog tracking to include studio selection events
 
 #### Milestone 3.2: Studio Toggle Enhancement
-- Update `components/studio/studio-toggle.tsx`:
+- Update `components/artifact/studio/studio-toggle.tsx`:
   - Add badge showing count of selected items
   - Use `useStudio()` to get selected count
   - Navigate to studio artifact on click (open artifact panel)
-  - Add visual indicator when items are selected (badge color change)
+  - Add visual indicator when items are selected (no badge > badge with number).
 
 #### Milestone 3.3: Artifact Registration
 - Register Studio artifact in artifact system:
@@ -286,23 +327,22 @@ Build the core Studio feature as an artifact-based workspace where users can com
 ### Phase 4: API Implementation & Database (Day 5-6)
 **Goal**: Implement real API endpoints and database persistence
 
-#### Milestone 4.1: Database Schema
-- Create Supabase migration for `looks` table:
+#### Milestone 4.1: Storage Bucket Migration
+- Create Supabase migration for `generated-looks` storage bucket:
   ```sql
-  CREATE TABLE looks (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES auth.users(id),
-    look_id TEXT UNIQUE NOT NULL,
-    generated_image_url TEXT NOT NULL,
-    product_ids TEXT[] NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-  );
-  
-  CREATE INDEX idx_looks_user_id ON looks(user_id);
-  CREATE INDEX idx_looks_created_at ON looks(created_at DESC);
+  -- Create generated-looks storage bucket
+  INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+  VALUES (
+    'generated-looks',
+    'generated-looks',
+    true,
+    10485760, -- 10MB
+    ARRAY['image/jpeg', 'image/png', 'image/webp']
+  )
+  ON CONFLICT (id) DO NOTHING;
   ```
-- Add RLS policies for user-specific access
+- Add RLS policies for user-specific access to bucket
+- **Note**: Existing `lookbooks` table is used for storing look metadata (no new table needed)
 
 #### Milestone 4.2: Generate Look API (Gemini Integration)
 - Implement `/app/api/studio/generate-look/route.ts`:
@@ -323,10 +363,13 @@ Build the core Studio feature as an artifact-based workspace where users can com
 #### Milestone 4.3: Save Look API (Real Implementation)
 - Implement `/app/api/studio/save-look/route.ts`:
   - Validate user authentication (Supabase session)
-  - Insert look record into `looks` table
-  - Handle duplicate look_id (update instead of insert)
-  - Return saved look details
-  - Add error handling for database failures
+  - Convert base64 image to blob and upload to `generated-looks` bucket
+  - Create entry in `lookbooks` table with `cover_image_url` pointing to uploaded image
+  - For each product in outfit:
+    - If from search results (has sourceData): create `wardrobe_items` entry with `category='online'`, `metadata=sourceData`
+    - Link via `lookbook_wardrobe_items` with default `slot='base'`, `role='other'`
+  - Return `{ lookbookId, imageUrl, createdAt }`
+  - Add error handling for storage and database failures
 
 #### Milestone 4.4: Avatar Upload Endpoint
 - Create `/app/api/studio/avatar/upload/route.ts`:
@@ -338,11 +381,10 @@ Build the core Studio feature as an artifact-based workspace where users can com
   - Optional: Save to user profile for future use
 
 **Deliverables**:
-- Supabase migration for `looks` table
+- Supabase migration for `generated-looks` storage bucket with RLS policies
 - Fully implemented `/api/studio/generate-look` (Gemini integration)
-- Fully implemented `/api/studio/save-look`
+- Fully implemented `/api/studio/save-look` (uses existing `lookbooks` table)
 - Avatar upload endpoint
-- Supabase Storage bucket for avatars
 - Error handling and validation
 - Environment variable: `GEMINI_API_KEY` (reuse existing)
 

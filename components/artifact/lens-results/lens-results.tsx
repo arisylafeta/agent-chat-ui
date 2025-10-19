@@ -11,6 +11,8 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import posthog from "posthog-js";
+import { useStudio } from "@/providers/studio-provider";
+import { toStudioProduct } from "@/types/studio";
 
 type Product = {
   id: string;
@@ -47,6 +49,9 @@ export function LensResults(props: LensResultsProps) {
   // Access meta passed via LoadExternalComponent
   const { meta } = useReactUIStreamContext();
   const artifactTuple = (meta as any)?.artifact ?? null;
+  
+  // Access Studio state for product selection
+  const { addToSelected, state: studioState } = useStudio();
 
   let ArtifactComp: any = null;
   let bag: any = null;
@@ -663,17 +668,29 @@ function ProductDetailDrawer({ product, onClose }: { product: Product; onClose: 
               </a>
               <button 
                 onClick={() => {
-                  posthog.capture('select_to_try_clicked', {
+                  // Add product to Studio
+                  addToSelected(toStudioProduct(product));
+                  
+                  // Track event
+                  posthog.capture('product_selected_for_studio', {
                     product_id: product.id,
                     product_name: product.name,
                     product_brand: product.brand,
                     product_price: product.price,
                   });
                 }}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-zinc-600 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors"
+                className={cn(
+                  "flex items-center justify-center gap-2 px-4 py-2.5 border text-sm font-medium rounded-lg transition-colors",
+                  studioState.selectedProducts.some(p => p.id === product.id)
+                    ? "border-accent-2 bg-accent-2/10 text-accent-2 dark:bg-accent-2/20"
+                    : "border-gray-300 dark:border-zinc-600 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-gray-300"
+                )}
               >
-                <Heart className="h-4 w-4" />
-                Select To Try
+                <Heart className={cn(
+                  "h-4 w-4",
+                  studioState.selectedProducts.some(p => p.id === product.id) && "fill-current"
+                )} />
+                {studioState.selectedProducts.some(p => p.id === product.id) ? "Selected" : "Select To Try"}
               </button>
               <button 
                 onClick={() => {

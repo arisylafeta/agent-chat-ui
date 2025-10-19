@@ -7,7 +7,8 @@ import { cn } from "../../lib/utils";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMediaQuery } from "../../hooks/use-media-queries";
 import { useQueryState, parseAsBoolean } from "nuqs";
-import { StudioToggle } from "../studio/studio-toggle";
+import { StudioToggle } from "@/components/artifact/studio/studio-toggle";
+import { TopActions } from "@/components/artifact/studio/top-actions";
 
 export function ArtifactSidebar({
   onClose,
@@ -44,6 +45,40 @@ export function ArtifactSidebar({
     "chatHistoryOpen",
     parseAsBoolean.withDefault(false),
   );
+  const [artifactTitle, setArtifactTitle] = useState<string>("");
+
+  // Track artifact title to conditionally show Studio toggle
+  // Use MutationObserver since ArtifactTitle uses portals
+  useEffect(() => {
+    if (!open) {
+      setArtifactTitle('');
+      return;
+    }
+
+    const checkTitle = () => {
+      const titleElement = document.querySelector('[data-artifact-panel] .font-medium');
+      if (titleElement?.textContent) {
+        setArtifactTitle(titleElement.textContent);
+      }
+    };
+
+    // Check immediately
+    checkTitle();
+
+    // Keep observing for title changes (e.g., when switching from lens-results to studio)
+    const observer = new MutationObserver(() => {
+      checkTitle();
+    });
+
+    const panel = document.querySelector('[data-artifact-panel]');
+    if (panel) {
+      observer.observe(panel, { childList: true, subtree: true, characterData: true });
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [open]);
 
   useEffect(() => {
     const onResize = () => {
@@ -152,7 +187,12 @@ export function ArtifactSidebar({
                 </div>
               </div>
 
-              <StudioToggle />
+              {/* Show TopActions when in Studio, otherwise show StudioToggle */}
+              {artifactTitle.trim().toLowerCase() === 'studio' ? (
+                <TopActions />
+              ) : (
+                <StudioToggle />
+              )}
             </div>
 
             <div className={cn("relative h-full items-stretch overflow-y-auto bg-gray-soft dark:bg-muted", contentClassName)} data-artifact-content>

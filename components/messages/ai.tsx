@@ -7,6 +7,7 @@ import { MarkdownText } from "../markdown-text";
 import { LoadExternalComponent } from "@langchain/langgraph-sdk/react-ui";
 import { LensResults } from "../artifact/lens-results";
 import { ShoppingResults } from "../artifact/shopping-results";
+import { Studio } from "../artifact/studio/studio";
 import { cn } from "../../lib/utils";
 import { ToolCalls, ToolResult } from "./tool-calls";
 import { MessageContentComplex } from "@langchain/core/messages";
@@ -48,6 +49,7 @@ function CustomComponent({
           components={{ 
             lens_results: LensResults,
             shopping_results: ShoppingResults,
+            studio: Studio,
           }}
           fallback={<div className="text-sm text-gray-500">Loading…</div>}
         />

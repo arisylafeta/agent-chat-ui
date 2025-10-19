@@ -4,6 +4,7 @@ import React from "react";
 import { ThreadProvider } from "@/providers/Thread";
 import { StreamProvider } from "@/providers/Stream";
 import { ArtifactProvider } from "@/components/artifact/artifact";
+import { StudioArtifactProvider } from "@/providers/studio-artifact-provider";
 
 export default function ChatLayout({
   children,
@@ -14,7 +15,9 @@ export default function ChatLayout({
     <ThreadProvider>
       <StreamProvider>
         <ArtifactProvider>
-          {children}
+          <StudioArtifactProvider>
+            {children}
+          </StudioArtifactProvider>
         </ArtifactProvider>
       </StreamProvider>
     </ThreadProvider>

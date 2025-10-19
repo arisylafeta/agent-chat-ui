@@ -2,7 +2,7 @@ import { TooltipIconButton } from "../ui/tooltip-icon-button";
 import { PanelRightOpen, PanelRightClose, Plus } from "lucide-react";
 import Image from "next/image";
 import { PrivacyToggle } from "./privacy-toggle";
-import { StudioToggle } from "../studio/studio-toggle";
+import { StudioToggle } from "@/components/artifact/studio/studio-toggle"
 
 export function ChatHeader(props: {
   chatStarted: boolean;
