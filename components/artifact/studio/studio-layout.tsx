@@ -20,17 +20,18 @@ export function StudioLayout() {
       <div className="flex flex-1 flex-col overflow-hidden lg:flex-row">
         {/* Main Section: Center Image + Outfit Column */}
         <div className="flex flex-1 flex-col items-center justify-center gap-4 overflow-y-auto p-6 lg:w-1/2">
-          <div className="flex w-full max-w-2xl items-start gap-4">
-            {/* Outfit Column (left side of center image) */}
-            <OutfitColumn />
-            
-            {/* Center Image Display */}
-            <div className="flex flex-1 flex-col items-center gap-4">
-              <LookDisplay />
+          <div className="flex h-full w-full flex-col gap-4">
+            {/* Top Row: Outfit Column + Center Image - wrapped in single container */}
+            <div className="flex flex-1 items-stretch justify-around">
+              {/* Outfit Column and Center Image share height */}
+              <OutfitColumn />
               
-              {/* Bottom Action Buttons */}
-              <BottomActions />
+              {/* Center Image Display */}
+              <LookDisplay />
             </div>
+            
+            {/* Bottom Action Buttons (full width) */}
+            <BottomActions />
           </div>
         </div>
 

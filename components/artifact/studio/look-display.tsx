@@ -2,8 +2,8 @@
 
 import React from "react";
 import { useStudio } from "@/providers/studio-provider";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { Loader2, User } from "lucide-react";
-import Image from "next/image";
 
 /**
  * Look Display Component
@@ -11,44 +11,57 @@ import Image from "next/image";
  */
 export function LookDisplay() {
   const { state } = useStudio();
-  const { generatedLook, isGenerating } = state;
+  const { generatedLook, isGenerating, selectedAvatar } = state;
 
   return (
-    <div className="relative w-full max-w-md">
+    <div className="relative h-full w-full max-w-md">
       {/* Aspect ratio container (3:4 portrait) */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden rounded-lg border-2 border-gray-soft bg-gray-soft/30">
+      <div className="relative h-full w-full overflow-hidden rounded-lg border-2 border-gray-soft bg-gray-soft/30">
         {isGenerating ? (
           // Loading state
-          <div className="flex h-full flex-col items-center justify-center gap-4">
-            <Loader2 className="h-12 w-12 animate-spin text-accent-2" />
-            <p className="text-sm font-medium text-black-soft">Generating your look...</p>
-            <p className="text-xs text-black-soft/60">This may take up to 30 seconds</p>
+          <div className="flex h-full flex-col items-center justify-center gap-6">
+            <div className="flex flex-col items-center gap-4">
+              {/* Loading avatar */}
+              <div className="rounded-full bg-gray-soft p-4 animate-pulse">
+                <User className="h-16 w-16 text-black-soft/60" />
+              </div>
+              {/* Loading spinner */}
+              <Loader2 className="h-8 w-8 animate-spin text-accent-2" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-black-soft">Generating your look...</p>
+              <p className="text-xs text-black-soft/60">This may take up to 30 seconds</p>
+            </div>
           </div>
         ) : generatedLook ? (
           // Generated look
-          <Image
+          <img
             src={generatedLook.imageUrl}
             alt="Generated look"
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 100vw, 50vw"
-            priority
+            className="h-full w-full object-cover"
+          />
+        ) : selectedAvatar ? (
+          // Show user's avatar
+          <img
+            src={selectedAvatar.image_url}
+            alt="Your avatar"
+            className="h-full w-full object-cover"
           />
         ) : (
-          // Default state (placeholder avatar)
-          <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
-            <div className="rounded-full bg-gray-soft p-6">
-              <User className="h-16 w-16 text-black-soft/40" />
-            </div>
-            <div>
-              <p className="text-lg font-medium text-black-soft/60">
-                Your look will appear here
-              </p>
-              <p className="text-sm text-black-soft/40 mt-2">
-                Add items to your outfit and click Generate
-              </p>
-            </div>
-          </div>
+          // Default state (no avatar)
+          <Empty className="gap-4">
+            <EmptyHeader>
+              <EmptyMedia>
+                <img
+                  src="/lookbook.png"
+                  alt="Avatar"
+                  className="w-40 h-40 rounded-full"
+                />
+              </EmptyMedia>
+              <EmptyTitle>Loading...</EmptyTitle>
+              <EmptyDescription>Please hang tight, we're loading your avatar</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         )}
 
         {/* Loading overlay (when generating) */}

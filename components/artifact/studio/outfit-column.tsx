@@ -3,7 +3,6 @@
 import React from "react";
 import { useStudio } from "@/providers/studio-provider";
 import { X } from "lucide-react";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 const MAX_OUTFIT_ITEMS = 6;
@@ -23,7 +22,7 @@ export function OutfitColumn() {
   });
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex h-full flex-col justify-between">
       {slots.map(({ index, product }) => (
         <div
           key={index}
@@ -31,25 +30,19 @@ export function OutfitColumn() {
             "group relative h-16 w-16 overflow-hidden rounded-md border-2 transition-all",
             product
               ? "border-accent-2 bg-white-soft"
-              : "border-dashed border-gray-soft bg-gray-soft/30"
+              : "border-dashed-accent bg-white-soft"
           )}
         >
           {product ? (
             <>
               {/* Product Thumbnail */}
-              {product.image ? (
-                <Image
+              <div className="relative h-full w-full overflow-hidden rounded-md bg-gray-soft">
+                <img
                   src={product.image}
                   alt={product.title}
-                  fill
-                  className="object-cover"
-                  sizes="64px"
+                  className="h-full w-full object-cover"
                 />
-              ) : (
-                <div className="flex h-full items-center justify-center">
-                  <span className="text-xs text-black-soft/40">?</span>
-                </div>
-              )}
+              </div>
 
               {/* Remove Button */}
               <button

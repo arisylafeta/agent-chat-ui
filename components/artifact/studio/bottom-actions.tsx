@@ -12,7 +12,7 @@ import posthog from "posthog-js";
  * Primary action buttons (Generate, Save, Share, Remix)
  */
 export function BottomActions() {
-  const { state, setGenerating, setGeneratedLook } = useStudio();
+  const { state, setGenerating, setGeneratedLook, setGeneratedLookAndStopGenerating } = useStudio();
   const { currentOutfit, generatedLook, isGenerating, selectedAvatar } = state;
 
   const canGenerate = currentOutfit.length > 0 && !isGenerating;
@@ -42,30 +42,19 @@ export function BottomActions() {
       // Set generating state
       setGenerating(true);
 
-      // Prepare FormData with avatar and product images
-      const formData = new FormData();
-
-      // Use real avatar from lookbook system
-      const avatarResponse = await fetch(selectedAvatar.image_url);
-      const avatarBlob = await avatarResponse.blob();
-      formData.append('avatar', avatarBlob, 'avatar.jpg');
-
-      // Add product images
-      for (let i = 0; i < currentOutfit.length; i++) {
-        const product = currentOutfit[i];
-        try {
-          const response = await fetch(product.image);
-          const blob = await response.blob();
-          formData.append('products', blob, `product-${i}.jpg`);
-        } catch (error) {
-          console.error(`Failed to fetch product image ${i}:`, error);
-        }
-      }
+      // Prepare request body with URLs (let backend handle fetching)
+      const requestBody = {
+        avatarUrl: selectedAvatar.image_url,
+        productUrls: currentOutfit.map(product => product.image),
+      };
 
       // Call generate API
       const response = await fetch('/api/studio/generate-look', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
         credentials: 'include',
       });
 
@@ -76,8 +65,8 @@ export function BottomActions() {
 
       const data = await response.json();
 
-      // Set generated look
-      setGeneratedLook({
+      // Use atomic update to set both generatedLook and stop generating in one state update
+      setGeneratedLookAndStopGenerating({
         imageUrl: data.generatedImage,
       });
 
@@ -99,7 +88,8 @@ export function BottomActions() {
         feature: "studio",
         error: error.message,
       });
-    } finally {
+      
+      // Stop generating on error
       setGenerating(false);
     }
   };

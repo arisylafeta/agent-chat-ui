@@ -48,16 +48,6 @@ export function HumanMessage({
   const [isEditing, setIsEditing] = useState(false);
   const [value, setValue] = useState("");
   const contentString = getContentString(message.content);
-  
-  // Debug logging
-  console.log('Human Message Debug:', {
-    messageId: message?.id,
-    contentType: typeof message.content,
-    contentLength: Array.isArray(message.content) ? message.content.length : 'not array',
-    contentString,
-    contentStringLength: contentString.length,
-    rawContent: message.content
-  });
 
   const handleSubmitEdit = () => {
     setIsEditing(false);

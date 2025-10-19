@@ -556,6 +556,7 @@ function ProductCard({ product, onClick }: { product: Product; onClick?: () => v
 }
 
 function ProductDetailDrawer({ product, onClose }: { product: Product; onClose: () => void }) {
+  const { addToSelected, state: studioState } = useStudio();
   const hasPrice = product.price > 0;
   const inStock = product.in_stock;
 

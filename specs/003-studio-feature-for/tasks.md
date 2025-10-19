@@ -624,7 +624,75 @@ supabase db push
 
 ## Phase 4: Polish & Testing
 
-### T023: Add Comprehensive Loading States [P]
+### T023-NEW: Implement Manual Studio Trigger System ✅
+**Files**: 
+- `providers/studio-artifact-provider.tsx` (new)
+- `components/artifact/studio/studio-toggle.tsx`
+- `components/artifact/artifact-sidebar.tsx`
+- `app/(chat)/layout.tsx`
+
+**Description**: Enable Studio to be triggered manually via button click (not just chat messages).
+
+**Requirements**:
+- Create `StudioArtifactProvider` with `openStudio()`/`closeStudio()` functions
+- Implement `ManualStudioRenderer` to render Studio in artifact system
+- Update `StudioToggle` to call `openStudio()` instead of console.log
+- Add conditional header logic in `ArtifactSidebar` (TopActions vs StudioToggle)
+- Handle artifact switching (Studio ↔ lens-results ↔ shopping-results)
+- Prevent race conditions with `hasOpened` flag
+- Use MutationObserver to detect artifact title changes
+
+**Reference**:
+- `specs/003-studio-feature-for/ARTIFACT_INTEGRATION.md` - Complete implementation guide
+
+**Acceptance Criteria**:
+- ✅ Studio opens when clicking StudioToggle button
+- ✅ Studio replaces other artifacts when opened
+- ✅ Other artifacts replace Studio when opened
+- ✅ Header shows TopActions when Studio is open
+- ✅ Header shows StudioToggle when other artifacts are open
+- ✅ No blank artifact panel after closing
+- ✅ State persists across artifact switches
+
+---
+
+### T024-NEW: Integrate Lookbook Avatar System ✅
+**Files**:
+- `types/studio.ts`
+- `providers/studio-provider.tsx`
+- `components/artifact/studio/top-actions.tsx`
+- `components/artifact/studio/bottom-actions.tsx`
+- `app/api/studio/save-look/route.ts`
+
+**Description**: Replace placeholder avatar logic with real avatar system from lookbook feature.
+
+**Requirements**:
+- Import `Avatar` and `Lookbook` types from `types/lookbook.ts`
+- Add `selectedAvatar: Avatar | null` to Studio state
+- Add `setSelectedAvatar()` action to provider
+- Auto-load user's avatar on Studio mount
+- Integrate `AvatarGenerationDialog` in TopActions
+- Update Generate button to use real avatar (not placeholder)
+- Update Save API response to return full `Lookbook` object
+- Add avatar validation before generation
+
+**Reference**:
+- `specs/003-studio-feature-for/LOOKBOOK_INTEGRATION.md` - Integration summary
+
+**Acceptance Criteria**:
+- ✅ Avatar loads automatically on mount
+- ✅ Avatar button opens generation dialog
+- ✅ Avatar generation flow works end-to-end
+- ✅ Generate validates avatar presence
+- ✅ Generate uses real avatar image
+- ✅ Save returns full lookbook object
+- ✅ No code duplication with lookbook types
+
+---
+
+## Phase 4: Polish & Testing (Original)
+
+### T025: Add Comprehensive Loading States [P]
 **Files**: Multiple component files
 
 **Description**: Add loading states across all Studio components.
@@ -648,7 +716,7 @@ supabase db push
 
 ---
 
-### T024: Add Empty States [P]
+### T026: Add Empty States [P]
 **Files**: Multiple component files
 
 **Description**: Add helpful empty states throughout Studio.
@@ -672,7 +740,7 @@ supabase db push
 
 ---
 
-### T025: Add Error Handling & Validation [P]
+### T027: Add Error Handling & Validation [P]
 **Files**: Multiple component files
 
 **Description**: Implement comprehensive error handling and input validation.

@@ -19,6 +19,7 @@ interface StudioContextType {
   clearOutfit: () => void;
   setGeneratedLook: (look: GeneratedLook | null) => void;
   setGenerating: (isGenerating: boolean) => void;
+  setGeneratedLookAndStopGenerating: (look: GeneratedLook) => void;
   setActiveDrawer: (drawer: 'wardrobe' | 'shopping' | 'looks' | null) => void;
   setSelectedAvatar: (avatar: Avatar | null) => void;
   // Computed values
@@ -144,11 +145,10 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         return prev;
       }
 
-      // Move to outfit and remove from selected
+      // Move to outfit (keep in selected)
       return {
         ...prev,
         currentOutfit: [...prev.currentOutfit, product],
-        selectedProducts: prev.selectedProducts.filter(p => p.id !== productId),
       };
     });
   }, []);
@@ -204,6 +204,17 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
+   * Set generated look and stop generating in a single atomic update
+   */
+  const setGeneratedLookAndStopGenerating = useCallback((look: GeneratedLook) => {
+    setState(prev => ({
+      ...prev,
+      generatedLook: look,
+      isGenerating: false,
+    }));
+  }, []);
+
+  /**
    * Set active drawer
    */
   const setActiveDrawer = useCallback((drawer: 'wardrobe' | 'shopping' | 'looks' | null) => {
@@ -239,6 +250,7 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     clearOutfit,
     setGeneratedLook,
     setGenerating,
+    setGeneratedLookAndStopGenerating,
     setActiveDrawer,
     setSelectedAvatar,
     selectedCount,

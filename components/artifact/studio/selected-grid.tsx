@@ -4,7 +4,6 @@ import React from "react";
 import { useStudio } from "@/providers/studio-provider";
 import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 /**
@@ -31,7 +30,7 @@ export function SelectedGrid() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
       {selectedProducts.map((product) => {
         const isInOutfit = currentOutfit.some((p) => p.id === product.id);
 
@@ -43,16 +42,14 @@ export function SelectedGrid() {
             {/* Product Image */}
             <div className="relative aspect-square w-full overflow-hidden bg-gray-soft">
               {product.image ? (
-                <Image
+                <img
                   src={product.image}
                   alt={product.title}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="flex h-full items-center justify-center">
-                  <span className="text-black-soft/40">No image</span>
+                <div className="flex h-full w-full items-center justify-center text-gray-400">
+                  No image
                 </div>
               )}
 

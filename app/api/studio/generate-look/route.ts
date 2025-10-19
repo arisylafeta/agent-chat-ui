@@ -1,11 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GENERATION_TIMEOUT_MS = 30000; // 30 seconds
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+/**
+ * Helper function to fetch image from URL and convert to base64
+ */
+async function fetchImageAsBase64(url: string): Promise<{ base64: string; mimeType: string }> {
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch image from ${url}: ${response.statusText}`);
+  }
+
+  const contentType = response.headers.get('content-type');
+  if (!contentType || !ALLOWED_MIME_TYPES.includes(contentType)) {
+    throw new Error(`Invalid image type from ${url}. Expected JPEG, PNG, or WebP.`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  
+  if (arrayBuffer.byteLength > MAX_FILE_SIZE) {
+    throw new Error(`Image from ${url} exceeds 10MB size limit`);
+  }
+
+  const base64 = Buffer.from(arrayBuffer).toString('base64');
+  
+  return { base64, mimeType: contentType };
+}
 
 /**
  * POST /api/studio/generate-look
@@ -26,52 +52,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 2. Parse FormData
-    const formData = await request.formData();
-    const avatarFile = formData.get('avatar') as File | null;
-    const productFiles = formData.getAll('products') as File[];
+    // 2. Parse JSON body
+    const body = await request.json();
+    const { avatarUrl, productUrls } = body;
 
     // 3. Validate inputs
-    if (!avatarFile) {
+    if (!avatarUrl || typeof avatarUrl !== 'string') {
       return NextResponse.json(
-        { error: 'Invalid request', message: 'Avatar image is required' },
+        { error: 'Invalid request', message: 'Avatar image URL is required' },
         { status: 400 }
       );
     }
 
-    if (productFiles.length === 0) {
+    if (!Array.isArray(productUrls) || productUrls.length === 0) {
       return NextResponse.json(
-        { error: 'Invalid request', message: 'At least 1 product image required' },
+        { error: 'Invalid request', message: 'At least 1 product image URL required' },
         { status: 400 }
       );
     }
 
-    if (productFiles.length > 6) {
+    if (productUrls.length > 6) {
       return NextResponse.json(
         { error: 'Invalid request', message: 'Maximum 6 product images allowed' },
         { status: 400 }
       );
     }
 
-    // 4. Validate file types and sizes
-    const allFiles = [avatarFile, ...productFiles];
-    for (const file of allFiles) {
-      if (!ALLOWED_MIME_TYPES.includes(file.type)) {
-        return NextResponse.json(
-          { error: 'Invalid file type', message: 'Only JPEG, PNG, and WebP images are supported' },
-          { status: 400 }
-        );
-      }
-
-      if (file.size > MAX_FILE_SIZE) {
-        return NextResponse.json(
-          { error: 'File too large', message: 'Image size must be less than 10MB' },
-          { status: 400 }
-        );
-      }
-    }
-
-    // 5. Check Gemini API key
+    // 4. Check Gemini API key
     if (!GEMINI_API_KEY) {
       console.error('GEMINI_API_KEY not configured');
       return NextResponse.json(
@@ -80,42 +87,85 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. Convert files to base64
-    const avatarBuffer = await avatarFile.arrayBuffer();
-    const avatarBase64 = Buffer.from(avatarBuffer).toString('base64');
+    // 5. Fetch images from URLs (server-side to avoid CORS)
+    let avatarBase64: string;
+    let avatarMimeType: string;
+    
+    try {
+      const avatarData = await fetchImageAsBase64(avatarUrl);
+      avatarBase64 = avatarData.base64;
+      avatarMimeType = avatarData.mimeType;
+    } catch (error: any) {
+      console.error('Failed to fetch avatar image:', error);
+      return NextResponse.json(
+        { error: 'Invalid avatar', message: `Failed to load avatar image: ${error.message}` },
+        { status: 400 }
+      );
+    }
 
-    const productBase64Array = await Promise.all(
-      productFiles.map(async (file) => {
-        const buffer = await file.arrayBuffer();
-        return Buffer.from(buffer).toString('base64');
-      })
-    );
+    // 6. Fetch product images
+    const productImages: Array<{ base64: string; mimeType: string }> = [];
+    const failedProducts: number[] = [];
+
+    for (let i = 0; i < productUrls.length; i++) {
+      try {
+        const productData = await fetchImageAsBase64(productUrls[i]);
+        productImages.push(productData);
+      } catch (error: any) {
+        console.error(`Failed to fetch product image ${i}:`, error);
+        failedProducts.push(i + 1);
+      }
+    }
+
+    // Check if at least one product image loaded successfully
+    if (productImages.length === 0) {
+      return NextResponse.json(
+        { 
+          error: 'Failed to load images', 
+          message: `Could not load any product images. Please check the image URLs and try again.` 
+        },
+        { status: 400 }
+      );
+    }
+
+    // Warn if some products failed but continue with successful ones
+    if (failedProducts.length > 0) {
+      console.warn(`Failed to load ${failedProducts.length} product image(s): ${failedProducts.join(', ')}`);
+    }
 
     // 7. Prepare Gemini API request
-    const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+    const genAI = new GoogleGenAI({
+      apiKey: GEMINI_API_KEY || '',
+    });
 
-    // Construct prompt
-    const prompt = `Create a realistic virtual try-on image showing the person in the avatar wearing these clothing items. Maintain realistic proportions, lighting, and fit. Professional fashion photography style. Ensure the person's face and body type match the avatar exactly.`;
+    // Construct prompt - simple and direct for virtual try-on
+    const clothingList = productImages.map((_, idx) => `<image${idx + 1}>`).join(', ');
+    const promptText = `Replace the clothes on this person with these clothes ${clothingList}. Maintain 100% realism, proportions, and body figure.`;
 
-    // Prepare image parts for Gemini
-    const imageParts = [
+    // Prepare prompt parts: text + avatar + product images
+    const promptParts = [
+      {
+        text: promptText,
+      },
       {
         inlineData: {
+          mimeType: avatarMimeType,
           data: avatarBase64,
-          mimeType: avatarFile.type,
         },
       },
-      ...productBase64Array.map((base64, idx) => ({
+      ...productImages.map((product) => ({
         inlineData: {
-          data: base64,
-          mimeType: productFiles[idx].type,
+          mimeType: product.mimeType,
+          data: product.base64,
         },
       })),
     ];
 
     // 8. Call Gemini API with timeout
-    const generationPromise = model.generateContent([prompt, ...imageParts]);
+    const generationPromise = genAI.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: promptParts,
+    });
     
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('Generation timeout')), GENERATION_TIMEOUT_MS);
@@ -123,20 +173,26 @@ export async function POST(request: NextRequest) {
 
     const result = await Promise.race([generationPromise, timeoutPromise]) as any;
 
-    if (!result || !result.response) {
+    if (!result) {
       throw new Error('No response from Gemini API');
     }
 
-    // const response = await result.response;
-    // const generatedText = response.text(); // For future use
-
-    // For now, since Gemini 2.0 Flash doesn't directly generate images,
-    // we'll return a placeholder response. In production, you'd use
-    // Imagen or another image generation model.
-    // TODO: Replace with actual image generation when available
+    // Extract the generated image from response
+    let generatedImageDataUrl = `data:${avatarMimeType};base64,${avatarBase64}`; // Fallback to avatar
     
-    // For MVP, we'll return the avatar as a fallback
-    const generatedImageDataUrl = `data:${avatarFile.type};base64,${avatarBase64}`;
+    if (result.candidates && result.candidates[0]?.content?.parts) {
+      for (const part of result.candidates[0].content.parts) {
+        if (part.inlineData) {
+          const generatedImageData = part.inlineData.data;
+          const mimeType = part.inlineData.mimeType || avatarMimeType;
+          generatedImageDataUrl = `data:${mimeType};base64,${generatedImageData}`;
+          console.log('✅ Successfully extracted generated image from Gemini');
+          break;
+        }
+      }
+    } else {
+      console.warn('⚠️ No generated image in response, using avatar as fallback');
+    }
 
     const processingTimeMs = Date.now() - startTime;
 
