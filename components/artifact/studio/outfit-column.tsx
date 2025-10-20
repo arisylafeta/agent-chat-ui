@@ -22,7 +22,7 @@ export function OutfitColumn() {
   });
 
   return (
-    <div className="flex h-full flex-col justify-between">
+    <div className="flex h-full flex-col justify-between gap-4">
       {slots.map(({ index, product }) => (
         <div
           key={index}

@@ -199,7 +199,7 @@ export function BottomActions() {
       </Button>
 
       {/* Secondary Actions */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-3">
+      <div className="grid w-full grid-cols-3 gap-2 sm:gap-3">
         <Button
           variant="outline"
           onClick={handleSave}
