@@ -38,7 +38,7 @@ export function ArtifactSidebar({
    */
   isSidebarOpen?: boolean;
 }) {
-  const isLargeScreen = useMediaQuery("(min-width: 768px)");
+  const isLargeScreen = useMediaQuery("(min-width: 75rem)");
   const [vh, setVh] = useState(0);
   const bb = useArtifactBoundingBox();
   const [, setChatHistoryOpen] = useQueryState(
@@ -111,7 +111,7 @@ export function ArtifactSidebar({
         <motion.div
           animate={{ opacity: 1 }}
           className={cn(
-            "fixed top-0 left-0 z-50 grid h-dvh w-dvw grid-cols-1 md:grid-cols-[400px_1fr] bg-transparent pointer-events-none overflow-x-hidden",
+            "fixed top-0 left-0 z-50 grid h-dvh w-dvw grid-cols-1 min-[75rem]:grid-cols-[400px_1fr] bg-transparent pointer-events-none overflow-x-hidden",
             className,
           )}
           exit={{ opacity: 0, transition: { delay: 0.4 } }}
@@ -160,7 +160,7 @@ export function ArtifactSidebar({
                     },
                   }
             }
-            className="col-start-1 md:col-start-2 z-20 flex h-dvh min-w-0 max-w-full flex-col overflow-x-hidden overflow-y-auto border-zinc-200 bg-gray-soft md:border-l dark:border-zinc-700 dark:bg-muted pointer-events-auto relative"
+            className="col-start-1 min-[75rem]:col-start-2 z-20 flex h-dvh min-w-0 max-w-full flex-col overflow-x-hidden overflow-y-auto border-zinc-200 bg-gray-soft min-[75rem]:border-l dark:border-zinc-700 dark:bg-muted pointer-events-auto relative"
             data-artifact-panel
             exit={{
               opacity: 0,

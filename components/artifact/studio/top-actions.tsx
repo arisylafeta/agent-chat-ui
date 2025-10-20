@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { User, ShoppingBag, Shirt } from "lucide-react";
+import { User, Shirt } from "lucide-react";
 import { toast } from "sonner";
 import posthog from "posthog-js";
 import { useStudio } from "@/providers/studio-provider";
@@ -10,7 +10,7 @@ import { AvatarGenerationDialog } from "@/components/lookbook/avatar-generation-
 
 /**
  * Top Actions Component
- * Button group for drawer triggers (Avatar, Products, Wardrobe)
+ * Button group for drawer triggers (Avatar, Wardrobe)
  */
 export function TopActions() {
   const { setSelectedAvatar, state } = useStudio();
@@ -50,14 +50,6 @@ export function TopActions() {
     });
   };
 
-  const handleProductsClick = () => {
-    toast.info("Shopping history coming soon");
-    posthog.capture("studio_products_clicked", {
-      feature: "studio",
-      action: "products_button_clicked",
-    });
-  };
-
   const handleWardrobeClick = () => {
     toast.info("Wardrobe coming soon");
     posthog.capture("studio_wardrobe_clicked", {
@@ -74,29 +66,17 @@ export function TopActions() {
           size="sm"
           onClick={handleAvatarClick}
           disabled={isLoadingAvatar}
-          className="gap-2"
         >
-          <User className="h-4 w-4" />
+          <User className="size-4 mr-2" />
           Avatar
         </Button>
 
         <Button
           variant="outline"
           size="sm"
-          onClick={handleProductsClick}
-          className="gap-2"
-        >
-          <ShoppingBag className="h-4 w-4" />
-          Products
-        </Button>
-
-        <Button
-          variant="outline"
-          size="sm"
           onClick={handleWardrobeClick}
-          className="gap-2"
         >
-          <Shirt className="h-4 w-4" />
+          <Shirt className="size-4 mr-2" />
           Wardrobe
         </Button>
       </div>

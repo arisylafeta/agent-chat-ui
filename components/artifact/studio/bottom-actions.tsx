@@ -3,7 +3,7 @@
 import React from "react";
 import { useStudio } from "@/providers/studio-provider";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Save, Share2, Shuffle } from "lucide-react";
+import { Sparkles, Save, Share2, Shuffle, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
 import posthog from "posthog-js";
 
@@ -176,13 +176,22 @@ export function BottomActions() {
     });
   };
 
+  const handleProducts = () => {
+    toast.info("Shopping history coming soon");
+    posthog.capture("studio_products_clicked", {
+      feature: "studio",
+      action: "products_button_clicked",
+      source: "bottom_actions_mobile",
+    });
+  };
+
   return (
-    <div className="flex w-full flex-col gap-2">
+    <div className="flex w-full flex-col gap-2 sm:gap-3">
       {/* Primary Action: Generate */}
       <Button
         onClick={handleGenerate}
         disabled={!canGenerate}
-        className="w-full gap-2"
+        className="h-12 w-full gap-2"
         size="lg"
       >
         <Sparkles className="h-5 w-5" />
@@ -190,13 +199,13 @@ export function BottomActions() {
       </Button>
 
       {/* Secondary Actions */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         <Button
           variant="outline"
           onClick={handleSave}
           disabled={!canSave}
-          className="gap-2"
-          size="sm"
+          className="h-10 gap-2"
+          size="default"
         >
           <Save className="h-4 w-4" />
           <span className="hidden sm:inline">Save</span>
@@ -205,8 +214,8 @@ export function BottomActions() {
         <Button
           variant="outline"
           onClick={handleShare}
-          className="gap-2"
-          size="sm"
+          className="h-10 gap-2"
+          size="default"
         >
           <Share2 className="h-4 w-4" />
           <span className="hidden sm:inline">Share</span>
@@ -215,13 +224,23 @@ export function BottomActions() {
         <Button
           variant="outline"
           onClick={handleRemix}
-          className="gap-2"
-          size="sm"
+          className="h-10 gap-2"
+          size="default"
         >
           <Shuffle className="h-4 w-4" />
           <span className="hidden sm:inline">Remix</span>
         </Button>
       </div>
+
+      {/* Products Button - Mobile Only, Below Secondary Actions */}
+      <Button
+        onClick={handleProducts}
+        className="h-12 w-full gap-2 min-[75rem]:hidden"
+        size="lg"
+      >
+        <ShoppingBag className="h-5 w-5" />
+        Browse Products
+      </Button>
     </div>
   );
 }

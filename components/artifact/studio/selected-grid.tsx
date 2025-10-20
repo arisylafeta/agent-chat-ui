@@ -30,7 +30,7 @@ export function SelectedGrid() {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
+    <div className="grid auto-rows-fr grid-cols-2 gap-4 min-[60rem]:grid-cols-3 min-[75rem]:grid-cols-1 min-[85rem]:grid-cols-2 min-[95rem]:grid-cols-3 min-[115rem]:grid-cols-4 min-[135rem]:grid-cols-5">
       {selectedProducts.map((product) => {
         const isInOutfit = currentOutfit.some((p) => p.id === product.id);
 

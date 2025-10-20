@@ -139,19 +139,14 @@ export async function POST(request: NextRequest) {
     });
 
     // Construct prompt - simple and direct for virtual try-on
-    const clothingList = productImages.map((_, idx) => `<image${idx + 1}>`).join(', ');
-    const promptText = `Replace the clothes on this person with these clothes ${clothingList}. Maintain 100% realism, proportions, and body figure.`;
+    // Place avatar LAST so the model outputs in the avatar's dimensions
+    const clothingList = productImages.map((_, idx) => `clothing item ${idx + 1}`).join(', ');
+    const promptText = `You are given ${productImages.length} clothing product image(s) followed by a final image of a person (the avatar). Your task: digitally dress the person in the final image with the clothing items shown. Replace the person's current clothes with the provided clothing items (${clothingList}). The final image (avatar) is the reference person - maintain their exact body proportions, skin tone, pose, and facial features. Output a photorealistic image matching the exact dimensions and aspect ratio of the avatar image.`;
 
-    // Prepare prompt parts: text + avatar + product images
+    // Prepare prompt parts: text + product images + avatar (avatar LAST for dimension consistency)
     const promptParts = [
       {
         text: promptText,
-      },
-      {
-        inlineData: {
-          mimeType: avatarMimeType,
-          data: avatarBase64,
-        },
       },
       ...productImages.map((product) => ({
         inlineData: {
@@ -159,7 +154,15 @@ export async function POST(request: NextRequest) {
           data: product.base64,
         },
       })),
+      {
+        inlineData: {
+          mimeType: avatarMimeType,
+          data: avatarBase64,
+        },
+      },
     ];
+
+    console.log('Generated prompt:', promptParts);
 
     // 8. Call Gemini API with timeout
     const generationPromise = genAI.models.generateContent({
