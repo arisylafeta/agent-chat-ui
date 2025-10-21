@@ -21,40 +21,28 @@ export async function fileToContentBlock(
     return Promise.reject(new Error(`Unsupported file type: ${file.type}`));
   }
 
-  // For images: Upload to Supabase first, get public URL
+  // For images: Upload to Supabase first to avoid large JSON payloads
   if (supportedImageTypes.includes(file.type)) {
     try {
       const { url, isBase64 } = await uploadImageWithFallback(file);
-      
-      if (isBase64) {
-        // Fallback: use base64 (remove data URI prefix)
-        const data = url.split(",")[1];
-        return {
-          type: "image",
-          source_type: "base64",
-          mime_type: file.type,
-          data,
-          metadata: { name: file.name },
-        };
-      } else {
-        // Success: use Supabase URL (put URL in data field)
-        // The backend will detect it's a URL and handle accordingly
-        return {
-          type: "image",
-          source_type: "base64", // Keep as base64 for type compatibility
-          mime_type: file.type,
-          data: url, // Public Supabase URL (not actually base64, but backend handles it)
-          metadata: { name: file.name, uploaded: true, isUrl: true },
-        };
-      }
+
+      // Always return a content block with URL
+      // Backend will fetch the image and convert to base64 data URI for model vision
+      return {
+        type: "image",
+        source_type: "url", // Changed from "base64" to be more accurate
+        mime_type: file.type,
+        data: isBase64 ? url : url, // URL (either Supabase or data URI as fallback)
+        metadata: { name: file.name, uploaded: !isBase64 },
+      };
     } catch (error) {
-      console.error('[fileToContentBlock] Image upload failed:', error);
+      console.error("[fileToContentBlock] Image upload failed:", error);
       toast.error("Failed to upload image. Please try again.");
       return Promise.reject(error);
     }
   }
 
-  // PDF: Keep base64 for now
+  // PDF: Convert to base64
   const data = await fileToBase64(file);
   return {
     type: "file",
@@ -97,11 +85,12 @@ export function isBase64ContentBlock(
   ) {
     return true;
   }
-  // image type (new)
+  // image type (accepts both "base64" and "url" source types)
   if (
     (block as { type: unknown }).type === "image" &&
     "source_type" in block &&
-    (block as { source_type: unknown }).source_type === "base64" &&
+    ((block as { source_type: unknown }).source_type === "base64" ||
+      (block as { source_type: unknown }).source_type === "url") &&
     "mime_type" in block &&
     typeof (block as { mime_type?: unknown }).mime_type === "string" &&
     (block as { mime_type: string }).mime_type.startsWith("image/")

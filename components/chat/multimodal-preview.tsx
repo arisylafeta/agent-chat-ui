@@ -21,7 +21,7 @@ export const MultimodalPreview: React.FC<MultimodalPreviewProps> = ({
   // Image block
   if (
     block.type === "image" &&
-    block.source_type === "base64" &&
+    (block.source_type === "base64" || block.source_type === "url") &&
     typeof block.mime_type === "string" &&
     block.mime_type.startsWith("image/")
   ) {
