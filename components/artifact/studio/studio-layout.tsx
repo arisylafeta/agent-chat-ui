@@ -33,8 +33,8 @@ export function StudioLayout() {
       {/* Main Content: Responsive Grid Layout */}
       <div className="flex flex-1 flex-col overflow-hidden min-[75rem]:flex-row">
         {/* Main Section: Center Image + Outfit Column - FIXED WIDTH, ALWAYS FULL HEIGHT */}
-        <div className="flex h-full flex-col overflow-hidden min-[75rem]:w-[640px] min-[75rem]:flex-shrink-0">
-          <div className="flex h-full flex-col overflow-y-auto p-4 sm:p-6">
+        <div className="flex flex-col overflow-hidden min-[75rem]:w-[640px] min-[75rem]:flex-shrink-0">
+          <div className="flex flex-1 flex-col overflow-y-auto p-4 sm:p-6" style={{ maxHeight: 'calc(100vh - 3.5rem)' }}>
             <div className="flex h-full w-full flex-col gap-4">
               <h3 className="text-lg font-medium text-black-soft">
                 Your Outfit
@@ -86,13 +86,13 @@ export function StudioLayout() {
         </div>
 
         {/* Selected Section: Product Grid - FLEXIBLE WIDTH, SCALES DOWN */}
-        <div className="flex flex-1 flex-col border-t border-gray-soft min-[75rem]:border-l min-[75rem]:border-t-0">
-          <div className="border-b border-gray-soft px-4 py-3 sm:px-6">
-            <h3 className="text-lg font-medium text-black-soft">
-              Selected Products {state.selectedProducts.length > 0 && `(${state.selectedProducts.length})`}
-            </h3>
-          </div>
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="flex flex-1 flex-col overflow-hidden border-t border-gray-soft min-[75rem]:border-l min-[75rem]:border-t-0">
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6" style={{ maxHeight: 'calc(100vh - 3.5rem)' }}>
+            <div className="mb-4">
+              <h3 className="text-lg font-medium text-black-soft">
+                Selected {state.selectedProducts.length > 0 && `(${state.selectedProducts.length})`}
+              </h3>
+            </div>
             <SelectedGrid />
           </div>
         </div>

@@ -50,8 +50,8 @@ export function LensResults(props: LensResultsProps) {
   const { meta } = useReactUIStreamContext();
   const artifactTuple = (meta as any)?.artifact ?? null;
   
-  // Access Studio state for product selection
-  const { addToSelected, state: studioState } = useStudio();
+  // Access Studio state for product selection (used in ProductDetailDrawer)
+  // const { addToSelected, state: studioState } = useStudio();
 
   let ArtifactComp: any = null;
   let bag: any = null;

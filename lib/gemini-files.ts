@@ -53,12 +53,15 @@ export async function uploadImageToGemini(
     // Upload to Gemini Files API
     const uploadResponse = await genAI.files.upload({
       file,
-      displayName: options.displayName || options.role || 'image',
     });
 
     console.log(`✅ Uploaded ${options.displayName || 'image'} to Gemini Files API`);
     console.log(`   URI: ${uploadResponse.uri}`);
     console.log(`   Name: ${uploadResponse.name}`);
+
+    if (!uploadResponse.uri || !uploadResponse.name) {
+      throw new Error('Upload response missing required fields (uri or name)');
+    }
 
     return {
       uri: uploadResponse.uri,
