@@ -16,6 +16,10 @@ export const ClothingCategorySchema = z.enum([
   'boots',
   'sneakers',
   'accessories',
+  'suit',        // NEW: Fullbody category
+  'tracksuit',   // NEW: Fullbody category
+  'jumpsuit',    // NEW: Fullbody category
+  'romper',      // NEW: Fullbody category
   'other',
 ]);
 

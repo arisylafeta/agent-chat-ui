@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { toast } from 'sonner';
 import { StudioProduct, StudioState, GeneratedLook } from '@/types/studio';
 import { Avatar } from '@/types/lookbook';
+import { canAddToOutfit as validateOutfit } from '@/types/outfit-roles';
 
 /**
  * Studio Context Type
@@ -145,7 +146,18 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
         return prev;
       }
 
-      // Move to outfit (keep in selected)
+      // Validate outfit composition before adding
+      // Convert StudioProduct to ProductWithRole by using sourceData
+      const validation = validateOutfit(
+        prev.currentOutfit.map(p => p.sourceData),
+        product.sourceData
+      );
+
+      if (!validation.canAdd) {
+        toast.error(validation.reason || 'Cannot add this item to outfit');
+        return prev;
+      }
+
       return {
         ...prev,
         currentOutfit: [...prev.currentOutfit, product],

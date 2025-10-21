@@ -30,7 +30,7 @@ export async function fileToContentBlock(
       // Backend will fetch the image and convert to base64 data URI for model vision
       return {
         type: "image",
-        source_type: "url", // Changed from "base64" to be more accurate
+        source_type: "base64", // Required by Base64ContentBlock type, data contains URL
         mime_type: file.type,
         data: isBase64 ? url : url, // URL (either Supabase or data URI as fallback)
         metadata: { name: file.name, uploaded: !isBase64 },
