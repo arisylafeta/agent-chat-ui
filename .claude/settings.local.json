@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:ai.google.dev)",
+      "WebFetch(domain:docs.boundaryml.com)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:github.com)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

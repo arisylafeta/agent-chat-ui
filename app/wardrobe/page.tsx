@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { ChatHeader } from '@/components/chat/chat-header';
 import { useChatSidebar } from '@/hooks/use-chat-sidebar';
@@ -156,12 +155,10 @@ export default function WardrobePage() {
             <Empty className="py-12">
               <EmptyHeader>
                 <EmptyMedia>
-                  <Image
+                  <img
                     src="/wardrobe.png"
                     alt="Empty wardrobe"
-                    width={200}
-                    height={200}
-                    className="opacity-80"
+                    className="w-[200px] h-[200px] opacity-80"
                   />
                 </EmptyMedia>
                 <EmptyTitle>

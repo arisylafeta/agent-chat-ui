@@ -1,11 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { GoogleGenAI } from '@google/genai';
+import { writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
+import { existsSync } from 'fs';
+import { uploadImagesToGemini, type UploadedFile } from '@/lib/gemini-files';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GENERATION_TIMEOUT_MS = 30000; // 30 seconds
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const DEBUG_LOGS_DIR = join(process.cwd(), 'debug-logs', 'studio-generation');
+const USE_FILES_API = process.env.GEMINI_USE_FILES_API === 'true'; // Enable Files API via env var
+
+/**
+ * Helper function to save debug logs (images + prompt) to disk
+ */
+async function saveDebugLogs(
+  avatarBase64: string,
+  avatarMimeType: string,
+  productImages: Array<{ base64: string; mimeType: string }>,
+  promptText: string
+) {
+  try {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const logDir = join(DEBUG_LOGS_DIR, timestamp);
+
+    // Create directory if it doesn't exist
+    if (!existsSync(logDir)) {
+      await mkdir(logDir, { recursive: true });
+    }
+
+    // Save avatar image
+    const avatarExt = avatarMimeType.split('/')[1];
+    await writeFile(
+      join(logDir, `avatar.${avatarExt}`),
+      Buffer.from(avatarBase64, 'base64')
+    );
+
+    // Save product images (labeled 1, 2, 3, etc.)
+    for (let i = 0; i < productImages.length; i++) {
+      const productExt = productImages[i].mimeType.split('/')[1];
+      await writeFile(
+        join(logDir, `${i + 1}.${productExt}`),
+        Buffer.from(productImages[i].base64, 'base64')
+      );
+    }
+
+    // Save prompt text
+    await writeFile(
+      join(logDir, 'prompt.txt'),
+      promptText,
+      'utf-8'
+    );
+
+    console.log(`✅ Debug logs saved to: ${logDir}`);
+  } catch (error) {
+    console.error('❌ Failed to save debug logs:', error);
+  }
+}
 
 /**
  * Helper function to fetch image from URL and convert to base64
@@ -54,7 +107,12 @@ export async function POST(request: NextRequest) {
 
     // 2. Parse JSON body
     const body = await request.json();
-    const { avatarUrl, productUrls } = body;
+    const { avatarUrl, productUrls, products } = body;
+
+    // Support two formats:
+    // 1. Legacy: { avatarUrl, productUrls: string[] }
+    // 2. New: { avatarUrl, products: Array<{ url: string, category?: string, role?: string }> }
+    const productsList = products || productUrls?.map((url: string) => ({ url })) || [];
 
     // 3. Validate inputs
     if (!avatarUrl || typeof avatarUrl !== 'string') {
@@ -64,14 +122,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!Array.isArray(productUrls) || productUrls.length === 0) {
+    if (!Array.isArray(productsList) || productsList.length === 0) {
       return NextResponse.json(
-        { error: 'Invalid request', message: 'At least 1 product image URL required' },
+        { error: 'Invalid request', message: 'At least 1 product image required' },
         { status: 400 }
       );
     }
 
-    if (productUrls.length > 6) {
+    if (productsList.length > 6) {
       return NextResponse.json(
         { error: 'Invalid request', message: 'Maximum 6 product images allowed' },
         { status: 400 }
@@ -103,14 +161,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 6. Fetch product images
-    const productImages: Array<{ base64: string; mimeType: string }> = [];
+    // 6. Fetch product images with metadata
+    const productImages: Array<{ base64: string; mimeType: string; role?: string; category?: string }> = [];
     const failedProducts: number[] = [];
 
-    for (let i = 0; i < productUrls.length; i++) {
+    for (let i = 0; i < productsList.length; i++) {
       try {
-        const productData = await fetchImageAsBase64(productUrls[i]);
-        productImages.push(productData);
+        const product = productsList[i];
+        const productUrl = typeof product === 'string' ? product : product.url;
+        const productData = await fetchImageAsBase64(productUrl);
+
+        productImages.push({
+          ...productData,
+          role: typeof product === 'object' ? product.role : undefined,
+          category: typeof product === 'object' ? product.category : undefined,
+        });
       } catch (error: any) {
         console.error(`Failed to fetch product image ${i}:`, error);
         failedProducts.push(i + 1);
@@ -138,31 +203,103 @@ export async function POST(request: NextRequest) {
       apiKey: GEMINI_API_KEY || '',
     });
 
-    // Construct prompt - simple and direct for virtual try-on
-    // Place avatar LAST so the model outputs in the avatar's dimensions
-    const clothingList = productImages.map((_, idx) => `clothing item ${idx + 1}`).join(', ');
-    const promptText = `You are given ${productImages.length} clothing product image(s) followed by a final image of a person (the avatar). Your task: digitally dress the person in the final image with the clothing items shown. Replace the person's current clothes with the provided clothing items (${clothingList}). The final image (avatar) is the reference person - maintain their exact body proportions, skin tone, pose, and facial features. Output a photorealistic image matching the exact dimensions and aspect ratio of the avatar image.`;
+    // 7a. Optionally upload images to Files API for better reliability
+    let uploadedFiles: UploadedFile[] | null = null;
 
-    // Prepare prompt parts: text + product images + avatar (avatar LAST for dimension consistency)
-    const promptParts = [
-      {
-        text: promptText,
-      },
-      ...productImages.map((product) => ({
-        inlineData: {
-          mimeType: product.mimeType,
-          data: product.base64,
-        },
-      })),
-      {
-        inlineData: {
-          mimeType: avatarMimeType,
-          data: avatarBase64,
-        },
-      },
-    ];
+    if (USE_FILES_API) {
+      console.log('📤 Uploading images to Gemini Files API...');
+      try {
+        const imagesToUpload = [
+          ...productImages.map((img, idx) => ({
+            base64: img.base64,
+            mimeType: img.mimeType,
+            role: img.role || img.category || `product-${idx + 1}`,
+            displayName: img.role || img.category || `Product ${idx + 1}`,
+          })),
+          {
+            base64: avatarBase64,
+            mimeType: avatarMimeType,
+            role: 'avatar',
+            displayName: 'Avatar',
+          },
+        ];
 
-    console.log('Generated prompt:', promptParts);
+        uploadedFiles = await uploadImagesToGemini(imagesToUpload);
+        console.log(`✅ Uploaded ${uploadedFiles.length} images to Files API`);
+      } catch (error: any) {
+        console.error('⚠️ Files API upload failed, falling back to inline data:', error.message);
+        uploadedFiles = null;
+      }
+    }
+
+    // 7b. Build labeled clothing list for prompt
+    const labeledItems: string[] = [];
+    productImages.forEach((img, idx) => {
+      const label = img.role || img.category || `Clothing item ${idx + 1}`;
+      labeledItems.push(label);
+    });
+
+    // Construct prompt - optimized for virtual try-on quality with labeled images
+    const promptText = `You are an expert virtual fashion stylist performing a precise virtual try-on task.
+
+INPUT IMAGES (in order):
+${labeledItems.map((label, idx) => `${idx + 1}. ${label.toUpperCase()}`).join('\n')}
+${labeledItems.length + 1}. AVATAR (the person to dress)
+
+TASK:
+Create a photorealistic image showing the person in image ${labeledItems.length + 1} (the avatar) wearing ALL the clothing items from images 1-${labeledItems.length}.
+
+CRITICAL REQUIREMENTS:
+1. PRESERVE THE PERSON: Keep the avatar's exact face, facial features, skin tone, hair, body proportions, and pose UNCHANGED
+2. CLOTHING ACCURACY: Dress the person in the exact clothing items shown - maintain their original style, color, pattern, and design details
+3. NATURAL FIT: Make the clothing fit naturally on the person's body shape
+4. LAYERING: If multiple items are provided, layer them appropriately (e.g., shirts under jackets, accessories on top)
+5. LIGHTING & REALISM: Match the lighting and environment of the avatar image - ensure realistic shadows, fabric draping, and wrinkles
+6. BACKGROUND: Keep the original background from the avatar image
+7. QUALITY: Output must be photorealistic with high detail - no cartoon/anime style
+8. DIMENSIONS: Match the exact aspect ratio and dimensions of the avatar image
+
+OUTPUT: A single photorealistic image of the person wearing the specified clothing items.`;
+
+    // 7c. Prepare prompt parts using Files API URIs or inline data
+    let promptParts: any[];
+
+    if (uploadedFiles && uploadedFiles.length > 0) {
+      // Use Files API URIs
+      console.log('📝 Using Files API URIs in prompt');
+      promptParts = [
+        { text: promptText },
+        ...uploadedFiles.map((file) => ({
+          fileData: {
+            mimeType: file.mimeType,
+            fileUri: file.uri,
+          },
+        })),
+      ];
+    } else {
+      // Use inline base64 data
+      console.log('📝 Using inline base64 data in prompt');
+      promptParts = [
+        { text: promptText },
+        ...productImages.map((product) => ({
+          inlineData: {
+            mimeType: product.mimeType,
+            data: product.base64,
+          },
+        })),
+        {
+          inlineData: {
+            mimeType: avatarMimeType,
+            data: avatarBase64,
+          },
+        },
+      ];
+    }
+
+    console.log('Generated prompt with', promptParts.length, 'parts');
+
+    // Save debug logs (images + prompt) to disk
+    await saveDebugLogs(avatarBase64, avatarMimeType, productImages, promptText);
 
     // 8. Call Gemini API with timeout
     const generationPromise = genAI.models.generateContent({
@@ -176,24 +313,82 @@ export async function POST(request: NextRequest) {
 
     const result = await Promise.race([generationPromise, timeoutPromise]) as any;
 
+    // Enhanced error handling and response validation
     if (!result) {
+      console.error('❌ No response from Gemini API');
       throw new Error('No response from Gemini API');
+    }
+
+    // Log full response structure for debugging
+    console.log('📋 Gemini API Response Structure:', JSON.stringify({
+      hasCandidates: !!result.candidates,
+      candidatesLength: result.candidates?.length,
+      firstCandidateExists: !!result.candidates?.[0],
+      hasContent: !!result.candidates?.[0]?.content,
+      hasParts: !!result.candidates?.[0]?.content?.parts,
+      partsLength: result.candidates?.[0]?.content?.parts?.length,
+      partTypes: result.candidates?.[0]?.content?.parts?.map((p: any) =>
+        Object.keys(p).join(',')
+      ),
+      finishReason: result.candidates?.[0]?.finishReason,
+      safetyRatings: result.candidates?.[0]?.safetyRatings,
+    }, null, 2));
+
+    // Check for API errors
+    if (result.error) {
+      console.error('❌ Gemini API returned error:', result.error);
+      throw new Error(`Gemini API error: ${JSON.stringify(result.error)}`);
+    }
+
+    // Check for safety blocks
+    if (result.candidates?.[0]?.finishReason === 'SAFETY') {
+      console.error('❌ Content blocked by safety filters:', result.candidates[0].safetyRatings);
+      throw new Error('Content generation blocked by safety filters');
     }
 
     // Extract the generated image from response
     let generatedImageDataUrl = `data:${avatarMimeType};base64,${avatarBase64}`; // Fallback to avatar
-    
+    let imageFound = false;
+
     if (result.candidates && result.candidates[0]?.content?.parts) {
-      for (const part of result.candidates[0].content.parts) {
+      const parts = result.candidates[0].content.parts;
+      console.log(`🔍 Checking ${parts.length} parts for inline image data...`);
+
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        console.log(`  Part ${i + 1}:`, {
+          hasInlineData: !!part.inlineData,
+          hasText: !!part.text,
+          keys: Object.keys(part),
+        });
+
         if (part.inlineData) {
           const generatedImageData = part.inlineData.data;
           const mimeType = part.inlineData.mimeType || avatarMimeType;
-          generatedImageDataUrl = `data:${mimeType};base64,${generatedImageData}`;
-          console.log('✅ Successfully extracted generated image from Gemini');
-          break;
+
+          if (generatedImageData) {
+            generatedImageDataUrl = `data:${mimeType};base64,${generatedImageData}`;
+            imageFound = true;
+            console.log(`✅ Successfully extracted generated image from part ${i + 1}`);
+            console.log(`   MIME type: ${mimeType}`);
+            console.log(`   Data length: ${generatedImageData.length} characters`);
+            break;
+          } else {
+            console.warn(`⚠️ Part ${i + 1} has inlineData but no data field`);
+          }
         }
       }
+
+      if (!imageFound) {
+        console.error('❌ No image found in any response parts');
+        console.error('Full response:', JSON.stringify(result, null, 2));
+      }
     } else {
+      console.error('❌ Invalid response structure - missing candidates/content/parts');
+      console.error('Full response:', JSON.stringify(result, null, 2));
+    }
+
+    if (!imageFound) {
       console.warn('⚠️ No generated image in response, using avatar as fallback');
     }
 

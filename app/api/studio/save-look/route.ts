@@ -146,7 +146,6 @@ export async function POST(request: NextRequest) {
               category: 'online',
               image_url: product.image,
               source: 'search_result',
-              metadata: product.sourceData,
             })
             .select()
             .single();

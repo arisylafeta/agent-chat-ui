@@ -11,7 +11,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import Image from 'next/image';
 
 interface ClothingItemCardProps {
   item: ClothingItem;
@@ -29,12 +28,10 @@ export function ClothingItemCard({
       {/* Image */}
       <div className="relative aspect-square overflow-hidden bg-gray-soft">
         {item.image_url ? (
-          <Image
+          <img
             src={item.image_url}
             alt={item.name}
-            fill
-            className="object-cover transition-transform group-hover:scale-105"
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+            className="absolute inset-0 h-full w-full object-cover transition-transform group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full items-center justify-center text-gray-400">

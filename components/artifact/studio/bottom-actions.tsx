@@ -42,9 +42,15 @@ export function BottomActions() {
       // Set generating state
       setGenerating(true);
 
-      // Prepare request body with URLs (let backend handle fetching)
+      // Prepare request body with URLs and metadata (let backend handle fetching)
       const requestBody = {
         avatarUrl: selectedAvatar.image_url,
+        products: currentOutfit.map(product => ({
+          url: product.image,
+          category: product.sourceData?.category || undefined,
+          role: product.sourceData?.role || product.sourceData?.category || undefined,
+        })),
+        // Legacy support - also send productUrls for backward compatibility
         productUrls: currentOutfit.map(product => product.image),
       };
 
