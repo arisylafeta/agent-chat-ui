@@ -32,7 +32,7 @@ export function useLookbooks(options: UseLookbooksOptions = {}) {
       if (options.limit) params.append('limit', options.limit.toString());
       if (options.offset) params.append('offset', options.offset.toString());
 
-      const response = await fetch(`/api/lookbooks?${params.toString()}`, {
+      const response = await fetch(`/api/lookbook/looks?${params.toString()}`, {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
@@ -60,7 +60,7 @@ export function useLookbooks(options: UseLookbooksOptions = {}) {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch('/api/lookbooks', {
+      const response = await fetch('/api/lookbook/looks', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -29,32 +29,53 @@ export function SearchCommandDialog({
   const [results, setResults] = React.useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
 
-  // Debounced search
+  // Debounced search with abort controller to prevent race conditions
   React.useEffect(() => {
     console.log("[SearchDialog] Query changed:", query);
-    
+
     if (!query || query.length < 2) {
       console.log("[SearchDialog] Query too short, clearing results");
       setResults([]);
+      setIsSearching(false);
       return;
     }
 
-    const timeoutId = setTimeout(async () => {
+    // Create abort controller for this search request
+    const abortController = new AbortController();
+    let timeoutId: NodeJS.Timeout;
+
+    const performSearch = async () => {
       console.log("[SearchDialog] Starting search after debounce");
       setIsSearching(true);
       try {
         const searchResults = await searchConversations(query, 10);
-        console.log("[SearchDialog] Received results:", searchResults.length);
-        setResults(searchResults);
-      } catch (error) {
-        console.error("[SearchDialog] Search failed:", error);
-        setResults([]);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300); // 300ms debounce
 
-    return () => clearTimeout(timeoutId);
+        // Check if this request was aborted before updating state
+        if (!abortController.signal.aborted) {
+          console.log("[SearchDialog] Received results:", searchResults.length);
+          setResults(searchResults);
+        }
+      } catch (error) {
+        // Don't update state if request was aborted
+        if (!abortController.signal.aborted) {
+          console.error("[SearchDialog] Search failed:", error);
+          setResults([]);
+        }
+      } finally {
+        // Only update loading state if request wasn't aborted
+        if (!abortController.signal.aborted) {
+          setIsSearching(false);
+        }
+      }
+    };
+
+    timeoutId = setTimeout(performSearch, 300); // 300ms debounce
+
+    // Cleanup: abort in-flight requests and clear timeout
+    return () => {
+      abortController.abort();
+      clearTimeout(timeoutId);
+    };
   }, [query]);
 
   const handleSelect = (threadId: string) => {

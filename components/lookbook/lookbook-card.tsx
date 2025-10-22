@@ -87,7 +87,7 @@ export function LookbookCard({
       {/* Content */}
       <div className="px-4 py-3">
         {/* Title */}
-        <h3 className="text-xl font-bold text-black-soft line-clamp-2 mb-1">
+        <h3 className="text-lg font-semibold text-black-soft line-clamp-2 mb-1">
           {lookbook.title}
         </h3>
 

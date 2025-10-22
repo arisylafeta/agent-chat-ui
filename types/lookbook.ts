@@ -187,3 +187,13 @@ export interface LookbookInput {
   cover_image_url?: string;
   visibility?: LookbookVisibility;
 }
+
+// Junction table types
+export interface LookbookWardrobeItem {
+  lookbook_id: string;
+  wardrobe_item_id: string;
+  category: string; // Denormalized from wardrobe_items
+  role: string; // Denormalized from wardrobe_items
+  note?: string;
+  created_at: string;
+}

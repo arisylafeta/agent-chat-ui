@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { OutfitRole } from './outfit-roles';
 
 // Source types
 export const sourceTypes = ['user_upload', 'affiliate_product', 'search_result'] as const;
@@ -49,6 +50,7 @@ export interface WardrobeItem {
   user_id: string;
   name: string;
   category: ClothingCategory;
+  role?: OutfitRole; // Outfit role for composition (top/bottom/dress/etc)
   brand?: string;
   image_url?: string;
   colors?: string[];
@@ -65,6 +67,7 @@ export interface WardrobeItem {
   source_ref_id?: string;
   affiliate_product_id?: string;
   search_result_id?: string;
+  metadata?: Record<string, any>; // Original product data snapshot (JSONB)
   created_at: string;
   updated_at: string;
 }

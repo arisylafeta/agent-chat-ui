@@ -14,10 +14,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { useLookbooks } from '@/hooks/use-lookbooks';
 import { LookbooksGrid } from '@/components/lookbook/lookbooks-grid';
+import { LookDetailDialog } from '@/components/lookbook/look-detail-dialog';
 
 export default function LookbookPage() {
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedLookbook, setSelectedLookbook] = useState<Lookbook | null>(null);
 
   const { chatHistoryOpen, toggleSidebar, isLargeScreen } = useChatSidebar();
   const { avatar, loading, error, generateAvatar, saveAvatar } = useLookbook();
@@ -297,8 +299,7 @@ export default function LookbookPage() {
               lookbooks={lookbooks}
               loading={lookbooksLoading}
               onView={(lookbook) => {
-                // TODO: Navigate to look detail page
-                console.log('View lookbook:', lookbook.id);
+                setSelectedLookbook(lookbook);
               }}
               onEdit={(lookbook) => {
                 // TODO: Open edit dialog
@@ -323,6 +324,12 @@ export default function LookbookPage() {
         onSave={handleSaveAvatar}
         onGenerate={generateAvatar}
         existingAvatar={avatar}
+      />
+
+      {/* Look Detail Dialog */}
+      <LookDetailDialog
+        lookbook={selectedLookbook}
+        onClose={() => setSelectedLookbook(null)}
       />
     </div>
   );

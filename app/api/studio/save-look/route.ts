@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
 import { SaveLookRequest, SaveLookResponse } from '@/types/studio';
+import { getProductRole } from '@/types/outfit-roles';
 
 const MAX_PRODUCTS = 6;
 const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -129,12 +130,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 9. Process products and create wardrobe items
+    // 9. Process products and create wardrobe items with role tracking
     const wardrobeItemIds: string[] = [];
+    const itemMetadataMap = new Map<string, { category: string, role: string }>(); // Track category + role per item
 
     for (const product of products) {
       try {
-        // Check if product has sourceData (from search results)
+        // Extract category and role from sourceData
+        const productCategory = product.sourceData?.category || 'other';
+        const productRole = product.sourceData?.role || getProductRole(product) || 'accessory';
+
         if (product.sourceData && Object.keys(product.sourceData).length > 0) {
           // Create wardrobe item for search result product
           const { data: wardrobeItem, error: wardrobeError } = await supabase
@@ -143,9 +148,11 @@ export async function POST(request: NextRequest) {
               user_id: user.id,
               name: product.title,
               brand: product.brand || 'Unknown',
-              category: 'online',
+              category: productCategory, // Real category from sourceData
+              role: productRole, // Real role from sourceData or derived
               image_url: product.image,
               source: 'search_result',
+              metadata: product.sourceData, // Store full snapshot in JSONB
             })
             .select()
             .single();
@@ -156,9 +163,37 @@ export async function POST(request: NextRequest) {
           }
 
           wardrobeItemIds.push(wardrobeItem.id);
+          itemMetadataMap.set(wardrobeItem.id, {
+            category: productCategory,
+            role: productRole
+          });
         } else {
-          // Product is already in wardrobe, use its ID
-          wardrobeItemIds.push(product.id);
+          // Product is already in wardrobe - fetch its category and role
+          const { data: existingItem } = await supabase
+            .from('wardrobe_items')
+            .select('category, role')
+            .eq('id', product.id)
+            .single();
+
+          if (existingItem) {
+            const itemCategory = existingItem.category || 'other';
+            const itemRole = existingItem.role ||
+                            getProductRole({ sourceData: { category: itemCategory }}) ||
+                            'accessory';
+
+            wardrobeItemIds.push(product.id);
+            itemMetadataMap.set(product.id, {
+              category: itemCategory,
+              role: itemRole
+            });
+          } else {
+            // Fallback if item not found
+            wardrobeItemIds.push(product.id);
+            itemMetadataMap.set(product.id, {
+              category: 'other',
+              role: 'accessory'
+            });
+          }
         }
       } catch (error) {
         console.error('Error processing product:', error);
@@ -166,14 +201,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 10. Link wardrobe items to lookbook
+    // 10. Link wardrobe items to lookbook with category + role (no slot)
     if (wardrobeItemIds.length > 0) {
-      const linkRecords = wardrobeItemIds.map(itemId => ({
-        lookbook_id: lookbookId,
-        wardrobe_item_id: itemId,
-        slot: 'base', // Default for MVP
-        role: 'other', // Default for MVP
-      }));
+      const linkRecords = wardrobeItemIds.map(itemId => {
+        const metadata = itemMetadataMap.get(itemId) || { category: 'other', role: 'accessory' };
+        return {
+          lookbook_id: lookbookId,
+          wardrobe_item_id: itemId,
+          category: metadata.category, // Denormalized category
+          role: metadata.role, // Denormalized role
+          // No slot field
+        };
+      });
 
       const { error: linkError } = await supabase
         .from('lookbook_wardrobe_items')
