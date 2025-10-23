@@ -1,13 +1,14 @@
 "use client";
 
 import React from "react";
-import { Star, ShoppingCart, Heart, Search, TrendingUp, Package, MessageSquare } from "lucide-react";
+import { Star, ShoppingCart, Heart, Search, Save, Package, MessageSquare } from "lucide-react";
 import { DrawerTitle } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import posthog from "posthog-js";
 import { useStudio } from "@/providers/studio-provider";
 import { toStudioProduct } from "@/types/studio";
 import type { Product } from "@/types/product";
+import { toast } from "sonner";
 
 type ProductDetailContentProps = {
   product: Product;
@@ -51,10 +52,77 @@ export function ProductDetailContent({
   const hasPrice = product.price > 0;
   const inStock = product.in_stock;
 
+  // State for save to wardrobe functionality
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [isSaved, setIsSaved] = React.useState(false);
+
   // Format price with currency symbol
   const formatPrice = (price: number, currency: string) => {
     const currencySymbol = currency.replace(/[^$£€¥]/g, '') || '$';
     return `${currencySymbol}${price.toFixed(0)}`;
+  };
+
+  // Handle save to wardrobe
+  const handleSaveToWardrobe = async () => {
+    if (isSaving || isSaved) return;
+
+    try {
+      setIsSaving(true);
+
+      // Track click event
+      posthog.capture(`${eventPrefix}_save_to_wardrobe_clicked`, {
+        product_id: product.id,
+        product_name: product.name,
+        product_brand: product.brand,
+        product_price: product.price,
+      });
+
+      // Call API to save product
+      const response = await fetch('/api/wardrobe/save-product', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ product }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to save product');
+      }
+
+      const data = await response.json();
+
+      // Track success event
+      posthog.capture(`${eventPrefix}_saved_to_wardrobe_success`, {
+        product_id: product.id,
+        product_name: product.name,
+        wardrobe_item_id: data.wardrobeItemId,
+        already_exists: data.alreadyExists,
+      });
+
+      setIsSaved(true);
+
+      if (data.alreadyExists) {
+        toast.success("This item is already in your wardrobe");
+      } else {
+        toast.success("Saved to wardrobe!");
+      }
+
+    } catch (error: any) {
+      console.error('Save to wardrobe error:', error);
+
+      // Track failure event
+      posthog.capture(`${eventPrefix}_saved_to_wardrobe_failed`, {
+        product_id: product.id,
+        error: error.message,
+      });
+
+      toast.error(error.message || "Failed to save to wardrobe");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -215,18 +283,18 @@ export function ProductDetailContent({
                 Find Similar
               </button>
               <button
-                onClick={() => {
-                  posthog.capture(`${eventPrefix}_track_price_clicked`, {
-                    product_id: product.id,
-                    product_name: product.name,
-                    product_brand: product.brand,
-                    product_price: product.price,
-                  });
-                }}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-zinc-600 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg transition-colors"
+                onClick={handleSaveToWardrobe}
+                disabled={isSaving || isSaved}
+                className={cn(
+                  "flex items-center justify-center gap-2 px-4 py-2.5 border text-sm font-medium rounded-lg transition-colors",
+                  isSaved
+                    ? "border-green-500 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 cursor-default"
+                    : "border-gray-300 dark:border-zinc-600 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-gray-300",
+                  (isSaving || isSaved) && "opacity-75"
+                )}
               >
-                <TrendingUp className="h-4 w-4" />
-                Track Price
+                <Save className={cn("h-4 w-4", isSaved && "fill-current")} />
+                {isSaving ? "Saving..." : isSaved ? "Saved" : "Save To Wardrobe"}
               </button>
             </div>
 

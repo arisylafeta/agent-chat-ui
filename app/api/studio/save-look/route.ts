@@ -138,35 +138,126 @@ export async function POST(request: NextRequest) {
       try {
         // Extract category and role from sourceData
         const productCategory = product.sourceData?.category || 'other';
-        const productRole = product.sourceData?.role || getProductRole(product) || 'accessory';
+        const productRole = product.sourceData?.role || getProductRole(product.sourceData as any) || 'accessory';
 
         if (product.sourceData && Object.keys(product.sourceData).length > 0) {
-          // Create wardrobe item for search result product
-          const { data: wardrobeItem, error: wardrobeError } = await supabase
-            .from('wardrobe_items')
-            .insert({
-              user_id: user.id,
-              name: product.title,
-              brand: product.brand || 'Unknown',
-              category: productCategory, // Real category from sourceData
-              role: productRole, // Real role from sourceData or derived
-              image_url: product.image,
-              source: 'search_result',
-              metadata: product.sourceData, // Store full snapshot in JSONB
-            })
-            .select()
-            .single();
+          // Check for duplicates in wardrobe based on metadata or image URL
+          // First try to find by metadata (most accurate for search results)
+          let existingItem = null;
 
-          if (wardrobeError) {
-            console.error('Failed to create wardrobe item:', wardrobeError);
-            continue; // Skip this product but continue with others
+          // Try to find by product URL/link (most reliable unique identifier)
+          // Check both product_url and product_link since different sources use different field names
+          const productUrl = product.sourceData.product_url || product.sourceData.product_link;
+
+          if (productUrl) {
+            // Try product_url first
+            const { data: itemByUrl } = await supabase
+              .from('wardrobe_items')
+              .select('id, category, role')
+              .eq('user_id', user.id)
+              .filter('metadata->>product_url', 'eq', productUrl)
+              .maybeSingle();
+
+            if (itemByUrl) {
+              existingItem = itemByUrl;
+            } else {
+              // Fallback to product_link field
+              const { data: itemByLink } = await supabase
+                .from('wardrobe_items')
+                .select('id, category, role')
+                .eq('user_id', user.id)
+                .filter('metadata->>product_link', 'eq', productUrl)
+                .maybeSingle();
+
+              if (itemByLink) {
+                existingItem = itemByLink;
+              }
+            }
           }
 
-          wardrobeItemIds.push(wardrobeItem.id);
-          itemMetadataMap.set(wardrobeItem.id, {
-            category: productCategory,
-            role: productRole
-          });
+          if (existingItem) {
+            // Use existing item instead of creating duplicate
+            const itemCategory = existingItem.category || productCategory;
+            const itemRole = existingItem.role || productRole;
+
+            wardrobeItemIds.push(existingItem.id);
+            itemMetadataMap.set(existingItem.id, {
+              category: itemCategory,
+              role: itemRole
+            });
+          } else {
+            // Download external image and upload to storage
+            let uploadedImageUrl = product.image;
+
+            try {
+              // Fetch the external image
+              const imageResponse = await fetch(product.image);
+              if (!imageResponse.ok) {
+                throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+              }
+
+              // Get the image buffer
+              const imageBuffer = await imageResponse.arrayBuffer();
+
+              // Determine file extension from content-type or URL
+              const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+              const fileExt = contentType.split('/')[1] || 'jpg';
+
+              // Generate unique filename
+              const fileName = `${user.id}/${crypto.randomUUID()}.${fileExt}`;
+
+              // Upload to Supabase Storage
+              const { error: storageError } = await supabase.storage
+                .from('clothing-images')
+                .upload(fileName, imageBuffer, {
+                  contentType,
+                  cacheControl: '3600',
+                  upsert: false,
+                });
+
+              if (storageError) {
+                console.error('Failed to upload image to storage:', storageError);
+                // Fall back to using the original external URL
+              } else {
+                // Get public URL for the uploaded image
+                const { data: { publicUrl } } = supabase.storage
+                  .from('clothing-images')
+                  .getPublicUrl(fileName);
+
+                uploadedImageUrl = publicUrl;
+              }
+            } catch (imageError) {
+              console.error('Error downloading/uploading image:', imageError);
+              // Fall back to using the original external URL
+            }
+
+            // Create new wardrobe item for search result product
+            const { data: wardrobeItem, error: wardrobeError } = await supabase
+              .from('wardrobe_items')
+              .insert({
+                user_id: user.id,
+                name: product.title,
+                brand: product.brand || 'Unknown',
+                category: productCategory, // Real category from sourceData
+                role: productRole, // Real role from sourceData or derived
+                image_url: uploadedImageUrl, // Use uploaded image URL or fallback to external
+                source: 'search_result',
+                metadata: product.sourceData, // Store full snapshot in JSONB
+              })
+              .select()
+              .single();
+
+            if (wardrobeError) {
+              console.error('Failed to create wardrobe item:', wardrobeError);
+              continue; // Skip this product but continue with others
+            }
+
+            wardrobeItemIds.push(wardrobeItem.id);
+            itemMetadataMap.set(wardrobeItem.id, {
+              category: productCategory,
+              role: productRole
+            });
+          }
         } else {
           // Product is already in wardrobe - fetch its category and role
           const { data: existingItem } = await supabase
@@ -178,7 +269,7 @@ export async function POST(request: NextRequest) {
           if (existingItem) {
             const itemCategory = existingItem.category || 'other';
             const itemRole = existingItem.role ||
-                            getProductRole({ sourceData: { category: itemCategory }}) ||
+                            getProductRole({ category: itemCategory }) ||
                             'accessory';
 
             wardrobeItemIds.push(product.id);

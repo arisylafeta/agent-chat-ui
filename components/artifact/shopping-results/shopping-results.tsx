@@ -416,7 +416,11 @@ export function ShoppingResults(props: ShoppingResultsProps) {
               </div>
             )}
           </div>
-          <ArtifactDrawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+          <ArtifactDrawer
+            open={isDrawerOpen}
+            onOpenChange={setIsDrawerOpen}
+            title={selectedProduct?.name || "Product Details"}
+          >
             {selectedProduct && (
               <ProductDetailContent
                 product={selectedProduct}

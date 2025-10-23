@@ -5,10 +5,8 @@ import { createClient } from '@/utils/supabase/server';
  * GET /api/lookbook/looks/[id]
  * Fetch a single lookbook with its linked wardrobe items
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();

@@ -25,7 +25,7 @@ const nextConfig = {
         maxMemoryGenerations: 1,
       };
     }
-    
+
     // Speed up development builds
     if (dev) {
       config.optimization = {
@@ -35,7 +35,14 @@ const nextConfig = {
         splitChunks: false,
       };
     }
-    
+
+    // Suppress Supabase Edge Runtime warnings
+    config.ignoreWarnings = [
+      ...(config.ignoreWarnings || []),
+      { module: /node_modules\/@supabase\/realtime-js/ },
+      { module: /node_modules\/@supabase\/supabase-js/ },
+    ];
+
     return config;
   },
   async rewrites() {

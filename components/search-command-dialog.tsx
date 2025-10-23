@@ -42,7 +42,6 @@ export function SearchCommandDialog({
 
     // Create abort controller for this search request
     const abortController = new AbortController();
-    let timeoutId: NodeJS.Timeout;
 
     const performSearch = async () => {
       console.log("[SearchDialog] Starting search after debounce");
@@ -69,7 +68,7 @@ export function SearchCommandDialog({
       }
     };
 
-    timeoutId = setTimeout(performSearch, 300); // 300ms debounce
+    const timeoutId = setTimeout(performSearch, 300); // 300ms debounce
 
     // Cleanup: abort in-flight requests and clear timeout
     return () => {

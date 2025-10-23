@@ -195,7 +195,7 @@ export function ArtifactSidebar({
               )}
             </div>
 
-            <div className={cn("relative h-full items-stretch overflow-y-auto bg-gray-soft dark:bg-muted", contentClassName)} data-artifact-content>
+            <div className={cn("@container relative h-full items-stretch overflow-y-auto bg-gray-soft dark:bg-muted", contentClassName)} data-artifact-content>
               <ArtifactContent className={cn("min-h-full", contentClassName)} />
             </div>
           </motion.div>

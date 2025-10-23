@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { Thread } from "@/components/chat/chat";
 import { useThreads } from "@/providers/Thread";
@@ -69,21 +69,13 @@ function ChatPageContent({ threadId }: { threadId: string }) {
   );
 }
 
-export default function ChatPage({ 
-  params 
-}: { 
-  params: Promise<{ threadId: string }> 
-}) {
-  const [resolvedParams, setResolvedParams] = React.useState<{ threadId: string } | null>(null);
-
-  // Resolve params promise
-  React.useEffect(() => {
-    params.then(setResolvedParams);
-  }, [params]);
-
-  if (!resolvedParams) {
-    return null; // or a loading spinner
+export default function ChatPage(
+  props: {
+    params: Promise<{ threadId: string }>
   }
+) {
+  // use() hook unwraps the promise, so params is already resolved
+  const params = use(props.params);
 
-  return <ChatPageContent threadId={resolvedParams.threadId} />;
+  return <ChatPageContent threadId={params.threadId} />;
 }

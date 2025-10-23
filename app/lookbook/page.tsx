@@ -15,15 +15,23 @@ import { Separator } from '@/components/ui/separator';
 import { useLookbooks } from '@/hooks/use-lookbooks';
 import { LookbooksGrid } from '@/components/lookbook/lookbooks-grid';
 import { LookDetailDialog } from '@/components/lookbook/look-detail-dialog';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Lookbook } from '@/types/lookbook';
+import { createClient } from '@/utils/supabase/client';
+import { toast } from 'sonner';
 
 export default function LookbookPage() {
   const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedLookbook, setSelectedLookbook] = useState<Lookbook | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [lookbookToDelete, setLookbookToDelete] = useState<Lookbook | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { chatHistoryOpen, toggleSidebar, isLargeScreen } = useChatSidebar();
   const { avatar, loading, error, generateAvatar, saveAvatar } = useLookbook();
-  const { lookbooks, loading: lookbooksLoading, error: lookbooksError } = useLookbooks();
+  const { lookbooks, loading: lookbooksLoading, error: lookbooksError, refetch } = useLookbooks();
+  const supabase = createClient();
 
   const handleCreateAvatar = () => {
     setIsDialogOpen(true);
@@ -40,6 +48,48 @@ export default function LookbookPage() {
       month: 'long',
       day: 'numeric',
     });
+  };
+
+  const handleDeleteClick = (lookbook: Lookbook) => {
+    setLookbookToDelete(lookbook);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!lookbookToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch(`/api/lookbook/${lookbookToDelete.id}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to delete lookbook');
+      }
+
+      toast.success(`"${lookbookToDelete.title}" has been deleted`);
+
+      // Refresh the lookbooks list
+      await refetch();
+
+      // Close the dialog
+      setDeleteDialogOpen(false);
+      setLookbookToDelete(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete lookbook');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -305,13 +355,7 @@ export default function LookbookPage() {
                 // TODO: Open edit dialog
                 console.log('Edit lookbook:', lookbook.id);
               }}
-              onDelete={async (lookbook) => {
-                if (!confirm(`Are you sure you want to delete "${lookbook.title}"?`)) {
-                  return;
-                }
-                // TODO: Implement delete functionality
-                console.log('Delete lookbook:', lookbook.id);
-              }}
+              onDelete={handleDeleteClick}
             />
           </div>
         </div>
@@ -330,6 +374,19 @@ export default function LookbookPage() {
       <LookDetailDialog
         lookbook={selectedLookbook}
         onClose={() => setSelectedLookbook(null)}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Look"
+        description={`Are you sure you want to delete "${lookbookToDelete?.title}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={handleDeleteConfirm}
+        loading={isDeleting}
       />
     </div>
   );

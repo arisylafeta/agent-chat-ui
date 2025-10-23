@@ -45,6 +45,7 @@ export function BottomActions() {
       // Prepare request body with URLs and metadata (let backend handle fetching)
       const requestBody = {
         avatarUrl: selectedAvatar.image_url,
+        isAvatar: selectedAvatar.isAvatar ?? true, // Default to true if not specified
         products: currentOutfit.map(product => ({
           url: product.image,
           category: product.sourceData?.category || undefined,

@@ -13,8 +13,6 @@ export function LookDisplay() {
   const { state } = useStudio();
   const { generatedLook, isGenerating, selectedAvatar } = state;
 
-  // BUG the images from column outfit are not always being sent to the backend, especially if the user refreshes.
-
   return (
     <div className="relative w-full max-w-md">
       {/* Aspect ratio container (3:4 portrait) */}

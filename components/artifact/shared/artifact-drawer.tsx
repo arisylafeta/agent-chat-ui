@@ -4,12 +4,15 @@ import React from "react";
 import {
   Drawer,
   DrawerContent,
+  DrawerTitle,
 } from "@/components/ui/drawer";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 type ArtifactDrawerProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   children: React.ReactNode;
+  title?: string;
 };
 
 /**
@@ -24,12 +27,12 @@ type ArtifactDrawerProps = {
  *
  * Usage:
  * ```tsx
- * <ArtifactDrawer open={isOpen} onOpenChange={setIsOpen}>
+ * <ArtifactDrawer open={isOpen} onOpenChange={setIsOpen} title="Drawer Title">
  *   <YourDrawerContent />
  * </ArtifactDrawer>
  * ```
  */
-export function ArtifactDrawer({ open, onOpenChange, children }: ArtifactDrawerProps) {
+export function ArtifactDrawer({ open, onOpenChange, children, title }: ArtifactDrawerProps) {
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent
@@ -42,6 +45,13 @@ export function ArtifactDrawer({ open, onOpenChange, children }: ArtifactDrawerP
         }}
         className="absolute left-0 right-0 bottom-0 w-full max-h-[60vh] bg-white-soft dark:bg-zinc-900 border-t border-gray-200"
       >
+        {title ? (
+          <DrawerTitle className="sr-only">{title}</DrawerTitle>
+        ) : (
+          <VisuallyHidden>
+            <DrawerTitle>Drawer</DrawerTitle>
+          </VisuallyHidden>
+        )}
         {children}
       </DrawerContent>
     </Drawer>

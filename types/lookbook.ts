@@ -34,6 +34,7 @@ export interface Avatar {
   preferences: Record<string, any> | null;
   created_at: string;
   updated_at: string;
+  isAvatar?: boolean; // True for actual avatars, false for lookbooks used as avatars
 }
 
 // Generate Avatar Request Data

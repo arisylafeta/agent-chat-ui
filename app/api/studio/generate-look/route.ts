@@ -107,12 +107,13 @@ export async function POST(request: NextRequest) {
 
     // 2. Parse JSON body
     const body = await request.json();
-    const { avatarUrl, productUrls, products } = body;
+    const { avatarUrl, productUrls, products, isAvatar } = body;
 
     // Support two formats:
     // 1. Legacy: { avatarUrl, productUrls: string[] }
-    // 2. New: { avatarUrl, products: Array<{ url: string, category?: string, role?: string }> }
+    // 2. New: { avatarUrl, products: Array<{ url: string, category?: string, role?: string }>, isAvatar?: boolean }
     const productsList = products || productUrls?.map((url: string) => ({ url })) || [];
+    const isActualAvatar = isAvatar ?? true; // Default to true if not specified
 
     // 3. Validate inputs
     if (!avatarUrl || typeof avatarUrl !== 'string') {
@@ -240,7 +241,9 @@ export async function POST(request: NextRequest) {
     });
 
     // Construct prompt - optimized for virtual try-on quality with labeled images
-    const promptText = `You are an expert virtual fashion stylist performing a precise virtual try-on task.
+    // Different prompts based on whether we're using an actual avatar or a previous look
+    const promptText = isActualAvatar
+      ? `You are an expert virtual fashion stylist performing a precise virtual try-on task.
 
 INPUT IMAGES (in order):
 ${labeledItems.map((label, idx) => `${idx + 1}. ${label.toUpperCase()}`).join('\n')}
@@ -259,7 +262,28 @@ CRITICAL REQUIREMENTS:
 7. QUALITY: Output must be photorealistic with high detail - no cartoon/anime style
 8. DIMENSIONS: Match the exact aspect ratio and dimensions of the avatar image
 
-OUTPUT: A single photorealistic image of the person wearing the specified clothing items.`;
+OUTPUT: A single photorealistic image of the person wearing the specified clothing items.`
+      : `You are an expert virtual fashion stylist performing a clothing replacement and outfit remix task.
+
+INPUT IMAGES (in order):
+${labeledItems.map((label, idx) => `${idx + 1}. ${label.toUpperCase()}`).join('\n')}
+${labeledItems.length + 1}. REFERENCE LOOK (existing outfit to modify)
+
+TASK:
+Create a photorealistic image showing the person from image ${labeledItems.length + 1} wearing the NEW clothing items from images 1-${labeledItems.length}, REPLACING the clothes they're currently wearing.
+
+CRITICAL REQUIREMENTS:
+1. PRESERVE THE PERSON: Keep the person's exact face, facial features, skin tone, hair, body proportions, and pose UNCHANGED
+2. REPLACE CLOTHING: Remove the existing clothes from the reference look and dress the person in the NEW clothing items from images 1-${labeledItems.length}
+3. CLOTHING ACCURACY: Use the exact clothing items shown in images 1-${labeledItems.length} - maintain their original style, color, pattern, and design details
+4. NATURAL FIT: Make the new clothing fit naturally on the person's body shape
+5. LAYERING: If multiple new items are provided, layer them appropriately (e.g., shirts under jackets, accessories on top)
+6. LIGHTING & REALISM: Match the lighting and environment of the reference look - ensure realistic shadows, fabric draping, and wrinkles
+7. BACKGROUND: Keep the original background from the reference look
+8. QUALITY: Output must be photorealistic with high detail - no cartoon/anime style
+9. DIMENSIONS: Match the exact aspect ratio and dimensions of the reference look
+
+OUTPUT: A single photorealistic image of the person wearing the NEW clothing items, with their original outfit replaced.`;
 
     // 7c. Prepare prompt parts using Files API URIs or inline data
     let promptParts: any[];
