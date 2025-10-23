@@ -8,12 +8,15 @@ import posthog from "posthog-js";
 import { ArtifactDrawer } from "@/components/artifact/shared/artifact-drawer";
 import { ProductDetailContent } from "@/components/artifact/shared/product-detail-content";
 import type { Product } from "@/types/product";
+import { prefetchProductEnrichment } from "@/lib/prefetch-enrichment";
 
 type LensResultsProps = {
   title?: string;
   summary?: string;
   imageUrl?: string;
-  products?: Product[];
+  products?: Product[];           // Backward compatibility (retail products)
+  retailProducts?: Product[];     // NEW: Explicit retail products list
+  resaleProducts?: Product[];     // NEW: Explicit resale products list
   modelName?: string;
   isStreaming?: boolean;
   loadedCount?: number;
@@ -35,10 +38,27 @@ export function LensResults(props: LensResultsProps) {
 
   const setOpen = bag?.setOpen ?? (() => {});
   const isOpen = !!bag?.open;
-  const products = useMemo(() => props.products || [], [props.products]);
-  const hasProducts = products.length > 0;
+  
+  // Use new fields if available, fallback to products for backward compatibility
+  const retailProducts = useMemo(
+    () => props.retailProducts || props.products || [],
+    [props.retailProducts, props.products]
+  );
+  const resaleProducts = useMemo(
+    () => props.resaleProducts || [],
+    [props.resaleProducts]
+  );
+  
+  const hasRetail = retailProducts.length > 0;
+  const hasResale = resaleProducts.length > 0;
+  const hasProducts = hasRetail || hasResale;
   const hasError = props.error === true;
 
+  // Tab state - default to retail if available, otherwise resale
+  const [activeTab, setActiveTab] = useState<"retail" | "resale">(
+    hasRetail ? "retail" : "resale"
+  );
+  
   // Filter and sort state
   const [sortBy, setSortBy] = useState<"relevance" | "price-asc" | "price-desc" | "rating">("relevance");
   const [showFilters, setShowFilters] = useState(false);
@@ -52,13 +72,15 @@ export function LensResults(props: LensResultsProps) {
   React.useEffect(() => {
     if (hasProducts && !props.isStreaming && !hasTrackedResults.current) {
       posthog.capture('search_results_loaded', {
-        product_count: products.length,
+        product_count: retailProducts.length + resaleProducts.length,
+        retail_count: retailProducts.length,
+        resale_count: resaleProducts.length,
         has_error: hasError,
         search_title: props.title,
       });
       hasTrackedResults.current = true;
     }
-  }, [hasProducts, hasError, products.length, props.isStreaming, props.title]);
+  }, [hasProducts, hasError, retailProducts.length, resaleProducts.length, props.isStreaming, props.title]);
 
   React.useEffect(() => {
     if (hasError && !hasTrackedError.current) {
@@ -92,22 +114,27 @@ export function LensResults(props: LensResultsProps) {
     }
   }, [isDrawerOpen]);
 
-  // Get unique brands
+  // Get unique brands based on active tab
   const availableBrands = useMemo(() => {
     const brands = new Set<string>();
-    products.forEach(p => {
+    const productsToCheck = activeTab === "retail" ? retailProducts : resaleProducts;
+    productsToCheck.forEach((p: Product) => {
       if (p.brand) brands.add(p.brand);
     });
     return Array.from(brands).sort();
-  }, [products]);
+  }, [retailProducts, resaleProducts, activeTab]);
 
-  // Filter and sort products
-  const filteredProducts = useMemo(() => {
-    let filtered = [...products];
+  // Convert Set to Array for stable dependency
+  const selectedBrandsArray = useMemo(() => Array.from(selectedBrands), [selectedBrands]);
+  
+  // Filter and sort retail and resale products separately
+  const filteredRetailProducts = useMemo(() => {
+    let filtered = [...retailProducts];
 
     // Apply filters
-    if (selectedBrands.size > 0) {
-      filtered = filtered.filter(p => p.brand && selectedBrands.has(p.brand));
+    if (selectedBrandsArray.length > 0) {
+      const brandsSet = new Set(selectedBrandsArray);
+      filtered = filtered.filter(p => p.brand && brandsSet.has(p.brand));
     }
     
     if (inStockOnly) {
@@ -128,12 +155,62 @@ export function LensResults(props: LensResultsProps) {
       case "relevance":
       default:
         // Sort by position (lower position = more relevant)
-        filtered.sort((a, b) => (a.position || 999) - (b.position || 999));
+        // For ranked products, use _score if available
+        filtered.sort((a, b) => {
+          const scoreA = (a as any)._score;
+          const scoreB = (b as any)._score;
+          if (scoreA !== undefined && scoreB !== undefined) {
+            return scoreB - scoreA; // Higher score first
+          }
+          return (a.position || 999) - (b.position || 999);
+        });
         break;
     }
 
     return filtered;
-  }, [products, selectedBrands, inStockOnly, sortBy]);
+  }, [retailProducts, selectedBrandsArray, inStockOnly, sortBy]);
+  
+  const filteredResaleProducts = useMemo(() => {
+    let filtered = [...resaleProducts];
+
+    // Apply filters
+    if (selectedBrandsArray.length > 0) {
+      const brandsSet = new Set(selectedBrandsArray);
+      filtered = filtered.filter(p => p.brand && brandsSet.has(p.brand));
+    }
+    
+    if (inStockOnly) {
+      filtered = filtered.filter(p => p.in_stock === true);
+    }
+
+    // Sort products
+    switch (sortBy) {
+      case "price-asc":
+        filtered.sort((a, b) => (a.price || 0) - (b.price || 0));
+        break;
+      case "price-desc":
+        filtered.sort((a, b) => (b.price || 0) - (a.price || 0));
+        break;
+      case "rating":
+        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        break;
+      case "relevance":
+      default:
+        // Sort by position (lower position = more relevant)
+        // For ranked products, use _score if available
+        filtered.sort((a, b) => {
+          const scoreA = (a as any)._score;
+          const scoreB = (b as any)._score;
+          if (scoreA !== undefined && scoreB !== undefined) {
+            return scoreB - scoreA; // Higher score first
+          }
+          return (a.position || 999) - (b.position || 999);
+        });
+        break;
+    }
+
+    return filtered;
+  }, [resaleProducts, selectedBrandsArray, inStockOnly, sortBy]);
 
   return (
     <>
@@ -184,7 +261,7 @@ export function LensResults(props: LensResultsProps) {
 
         {!isOpen && hasProducts && (
           <div className="mt-4 flex gap-2">
-            {products.slice(0, Math.min(products.length, 5)).map((product, idx) => (
+            {retailProducts.slice(0, Math.min(retailProducts.length, 5)).map((product: Product, idx: number) => (
               <div
                 key={idx}
                 className="flex-1 aspect-square rounded-lg overflow-hidden bg-gray-100 border border-gray-200 min-w-0"
@@ -202,10 +279,10 @@ export function LensResults(props: LensResultsProps) {
                 )}
               </div>
             ))}
-            {products.length > 5 && (
+            {(retailProducts.length + resaleProducts.length) > 5 && (
               <div className="flex-1 aspect-square rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center min-w-0">
                 <span className="text-sm font-medium text-gray-600">
-                  +{products.length - 5}
+                  +{(retailProducts.length + resaleProducts.length) - 5}
                 </span>
               </div>
             )}
@@ -217,7 +294,61 @@ export function LensResults(props: LensResultsProps) {
       {ArtifactComp ? (
         <ArtifactComp title={props.title ?? "Visual Search Results"}>
           <div className="p-6 md:p-8 relative" data-lens-results-content>
-            {/* Filters and Sort Controls - Moved to top */}
+            {/* Tabs */}
+            {hasProducts && !hasError && (
+              <div className="mb-6 border-b border-gray-200 dark:border-zinc-700">
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => {
+                      setActiveTab("retail");
+                      // Reset filters when switching tabs
+                      setSelectedBrands(new Set());
+                      setInStockOnly(false);
+                      posthog.capture('tab_switched', {
+                        tab: 'retail',
+                        product_count: filteredRetailProducts.length,
+                      });
+                    }}
+                    className={cn(
+                      "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
+                      activeTab === "retail"
+                        ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                        : "border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+                    )}
+                  >
+                    New & Retail
+                    <span className="ml-2 px-2 py-0.5 bg-gray-100 dark:bg-zinc-700 text-gray-700 dark:text-gray-300 text-xs rounded-full">
+                      {filteredRetailProducts.length}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveTab("resale");
+                      // Reset filters when switching tabs
+                      setSelectedBrands(new Set());
+                      setInStockOnly(false);
+                      posthog.capture('tab_switched', {
+                        tab: 'resale',
+                        product_count: filteredResaleProducts.length,
+                      });
+                    }}
+                    className={cn(
+                      "px-4 py-2 text-sm font-medium border-b-2 transition-colors flex items-center gap-2",
+                      activeTab === "resale"
+                        ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                        : "border-transparent text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200"
+                    )}
+                  >
+                    Pre-Owned & Vintage
+                    <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 text-xs rounded-full">
+                      {filteredResaleProducts.length}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Filters and Sort Controls */}
             {hasProducts && !hasError && (
               <div className="mb-6 flex flex-wrap items-center gap-3">
                 {/* Sort Dropdown */}
@@ -230,7 +361,8 @@ export function LensResults(props: LensResultsProps) {
                       setSortBy(newSort);
                       posthog.capture('sort_changed', {
                         sort_by: newSort,
-                        product_count: filteredProducts.length,
+                        tab: activeTab,
+                        product_count: activeTab === "retail" ? filteredRetailProducts.length : filteredResaleProducts.length,
                       });
                     }}
                     className="text-sm border border-gray-300 rounded-md px-3 py-1.5 bg-white dark:bg-zinc-800 dark:border-zinc-600 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -249,7 +381,8 @@ export function LensResults(props: LensResultsProps) {
                     setShowFilters(newShowFilters);
                     if (newShowFilters) {
                       posthog.capture('filters_opened', {
-                        product_count: filteredProducts.length,
+                        tab: activeTab,
+                        product_count: activeTab === "retail" ? filteredRetailProducts.length : filteredResaleProducts.length,
                       });
                     }
                   }}
@@ -266,7 +399,7 @@ export function LensResults(props: LensResultsProps) {
 
                 {/* Results Count */}
                 <span className="text-sm text-gray-600 dark:text-gray-400 ml-auto">
-                  {filteredProducts.length} {filteredProducts.length === 1 ? 'result' : 'results'}
+                  {activeTab === "retail" ? filteredRetailProducts.length : filteredResaleProducts.length} {((activeTab === "retail" ? filteredRetailProducts.length : filteredResaleProducts.length) === 1) ? 'result' : 'results'}
                 </span>
               </div>
             )}
@@ -396,27 +529,93 @@ export function LensResults(props: LensResultsProps) {
                   </div>
                 )}
               </div>
-            ) : filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-2 min-[1000px]:grid-cols-3 min-[1200px]:grid-cols-4 min-[1300px]:grid-cols-5 gap-4">
-                {filteredProducts.map((product, idx) => (
-                  <ProductCard 
-                    key={product.id || idx} 
-                    product={product}
-                    onClick={() => {
-                      setSelectedProduct(product);
-                      setIsDrawerOpen(true);
-                      posthog.capture('product_card_clicked', {
-                        product_id: product.id,
-                        product_name: product.name,
-                        product_brand: product.brand,
-                        product_price: product.price,
-                        product_position: idx + 1,
-                        in_stock: product.in_stock,
-                      });
-                    }}
-                  />
-                ))}
-              </div>
+            ) : (filteredRetailProducts.length > 0 || filteredResaleProducts.length > 0) ? (
+              <>
+                {/* Active Tab Content */}
+                {activeTab === "retail" ? (
+                  filteredRetailProducts.length > 0 ? (
+                    <div className="grid grid-cols-2 min-[1000px]:grid-cols-3 min-[1200px]:grid-cols-4 min-[1300px]:grid-cols-5 gap-4">
+                      {filteredRetailProducts.map((product: Product, idx: number) => (
+                        <ProductCard 
+                          key={product.id || `retail-${idx}`} 
+                          product={product}
+                          onClick={() => {
+                            // Prefetch enrichment data immediately
+                            prefetchProductEnrichment(product.id, product.product_url);
+                            
+                            setSelectedProduct(product);
+                            setIsDrawerOpen(true);
+                            posthog.capture('product_card_clicked', {
+                              product_id: product.id,
+                              product_name: product.name,
+                              product_brand: product.brand,
+                              product_price: product.price,
+                              product_position: idx + 1,
+                              product_category: 'retail',
+                              in_stock: product.in_stock,
+                            });
+                          }}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <Package className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                      <p>No retail products match your filters</p>
+                      <button
+                        onClick={() => {
+                          setSelectedBrands(new Set());
+                          setInStockOnly(false);
+                        }}
+                        className="mt-2 text-sm text-blue-600 hover:text-blue-700"
+                      >
+                        Clear filters
+                      </button>
+                    </div>
+                  )
+                ) : (
+                  filteredResaleProducts.length > 0 ? (
+                    <div className="grid grid-cols-2 min-[1000px]:grid-cols-3 min-[1200px]:grid-cols-4 min-[1300px]:grid-cols-5 gap-4">
+                      {filteredResaleProducts.map((product: Product, idx: number) => (
+                        <ProductCard 
+                          key={product.id || `resale-${idx}`} 
+                          product={product}
+                          onClick={() => {
+                            // Prefetch enrichment data immediately
+                            prefetchProductEnrichment(product.id, product.product_url);
+                            
+                            setSelectedProduct(product);
+                            setIsDrawerOpen(true);
+                            posthog.capture('product_card_clicked', {
+                              product_id: product.id,
+                              product_name: product.name,
+                              product_brand: product.brand,
+                              product_price: product.price,
+                              product_position: idx + 1,
+                              product_category: 'resale',
+                              in_stock: product.in_stock,
+                            });
+                          }}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <Package className="h-12 w-12 mx-auto mb-3 text-gray-400" />
+                      <p>No pre-owned products match your filters</p>
+                      <button
+                        onClick={() => {
+                          setSelectedBrands(new Set());
+                          setInStockOnly(false);
+                        }}
+                        className="mt-2 text-sm text-blue-600 hover:text-blue-700"
+                      >
+                        Clear filters
+                      </button>
+                    </div>
+                  )
+                )}
+              </>
             ) : hasProducts ? (
               <div className="text-center py-8 text-gray-500">
                 <Package className="h-12 w-12 mx-auto mb-3 text-gray-400" />
@@ -535,7 +734,7 @@ function ProductCard({ product, onClick }: { product: Product; onClick?: () => v
             </span>
           </div>
         ) : (
-          <p className="text-sm text-gray-500 dark:text-gray-400">Price not available</p>
+          <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">Click for Price</p>
         )}
       </div>
     </button>

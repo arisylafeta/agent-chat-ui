@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Star, ShoppingCart, Heart, Search, Save, Package, MessageSquare } from "lucide-react";
+import { Star, ShoppingCart, Heart, Search, Save, Package, MessageSquare, Ruler, Loader2 } from "lucide-react";
 import { DrawerTitle } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import posthog from "posthog-js";
@@ -9,6 +9,7 @@ import { useStudio } from "@/providers/studio-provider";
 import { toStudioProduct } from "@/types/studio";
 import type { Product } from "@/types/product";
 import { toast } from "sonner";
+import { useProductEnrichment } from "@/hooks/use-product-enrichment";
 
 type ProductDetailContentProps = {
   product: Product;
@@ -49,12 +50,33 @@ export function ProductDetailContent({
   eventPrefix = "product",
 }: ProductDetailContentProps) {
   const { addToSelected, removeFromSelected, state: studioState } = useStudio();
-  const hasPrice = product.price > 0;
   const inStock = product.in_stock;
 
   // State for save to wardrobe functionality
   const [isSaving, setIsSaving] = React.useState(false);
   const [isSaved, setIsSaved] = React.useState(false);
+
+  // Firecrawl enrichment hook - triggered by prefetch on click
+  const {
+    enrichedData,
+    status: enrichmentStatus,
+    error: enrichmentError,
+    enrich,
+    isLoading: isEnriching,
+    isCached,
+  } = useProductEnrichment(product.id, product.product_url);
+
+  // Auto-trigger enrichment when component mounts (if not already prefetched)
+  React.useEffect(() => {
+    if (product.product_url && enrichmentStatus === 'idle') {
+      enrich();
+    }
+  }, [product.product_url, enrichmentStatus, enrich]);
+
+  // Use enriched price if available, fallback to product price
+  const displayPrice = enrichedData?.price ?? product.price;
+  const displayCurrency = enrichedData?.currency ?? product.currency;
+  const hasDisplayPrice = displayPrice > 0;
 
   // Format price with currency symbol
   const formatPrice = (price: number, currency: string) => {
@@ -166,10 +188,28 @@ export function ProductDetailContent({
 
             {/* Price and Stock */}
             <div className="flex items-center justify-between">
-              <div>
-                {hasPrice ? (
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {formatPrice(product.price, product.currency)}
+              <div className="flex items-center gap-2">
+                {isEnriching && !enrichedData ? (
+                  // Skeleton with fallback to existing price
+                  <div className="flex items-center gap-2">
+                    {product.price > 0 ? (
+                      <div className="text-2xl font-bold text-gray-400 dark:text-gray-500 animate-pulse">
+                        {formatPrice(product.price, product.currency)}
+                      </div>
+                    ) : (
+                      <div className="h-8 w-24 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse" />
+                    )}
+                  </div>
+                ) : hasDisplayPrice ? (
+                  <div className="flex items-center gap-2">
+                    <div className="text-2xl font-bold text-gray-900 dark:text-white">
+                      {formatPrice(displayPrice, displayCurrency)}
+                    </div>
+                    {enrichedData?.price && enrichedData.price !== product.price && (
+                      <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                        Updated
+                      </span>
+                    )}
                   </div>
                 ) : (
                   <p className="text-lg text-gray-500 dark:text-gray-400">Price not available</p>
@@ -298,12 +338,90 @@ export function ProductDetailContent({
               </button>
             </div>
 
-            {/* Description */}
-            {product.description && (
+            {/* Enrichment Loading Indicator */}
+            {isEnriching && !enrichedData && (
+              <div className="flex items-center justify-center gap-2 py-2 text-xs text-gray-500 dark:text-gray-400">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Loading detailed info...
+              </div>
+            )}
+
+            {/* Enrichment Error - Silent fallback with optional retry */}
+            {enrichmentStatus === 'error' && enrichmentError && (
+              <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-1">
+                Showing basic info only
+              </div>
+            )}
+
+            {/* Description - Enhanced with enriched summary */}
+            {(isEnriching && !enrichedData) ? (
+              // Skeleton for description
               <div>
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Description</h4>
+                <div className="flex items-center gap-2 mb-2">
+                  <Package className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                  <div className="h-4 w-24 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse" />
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse w-full" />
+                  <div className="h-3 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse w-5/6" />
+                  <div className="h-3 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse w-4/6" />
+                </div>
+              </div>
+            ) : (enrichedData?.description_summary || product.description) && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Package className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Description</h4>
+                  {isCached && enrichedData?.description_summary && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400">✓</span>
+                  )}
+                </div>
                 <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                  {product.description}
+                  {enrichedData?.description_summary || product.description}
+                </p>
+              </div>
+            )}
+
+            {/* Materials - From enriched data */}
+            {isEnriching && !enrichedData ? (
+              // Skeleton for materials
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Package className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                  <div className="h-4 w-20 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse" />
+                </div>
+                <div className="h-3 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse w-3/4" />
+              </div>
+            ) : enrichedData?.materials_summary && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Package className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Materials</h4>
+                </div>
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  {enrichedData.materials_summary}
+                </p>
+              </div>
+            )}
+
+            {/* Sizing Info - From enriched data */}
+            {isEnriching && !enrichedData ? (
+              // Skeleton for sizing
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Ruler className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                  <div className="h-4 w-24 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse" />
+                </div>
+                <div className="h-3 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse w-2/3" />
+              </div>
+            ) : enrichedData?.sizing_info && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Ruler className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Sizing & Fit</h4>
+                </div>
+                <p className="text-sm text-gray-700 dark:text-gray-300">
+                  {enrichedData.sizing_info}
                 </p>
               </div>
             )}
@@ -329,8 +447,33 @@ export function ProductDetailContent({
               </div>
             )}
 
-            {/* What People Are Saying - Only for lens results */}
-            {showReviews && (
+            {/* Customer Reviews - Enhanced with enriched summary */}
+            {isEnriching && !enrichedData ? (
+              // Skeleton for reviews
+              <div className="pt-4 border-t border-gray-200 dark:border-zinc-700">
+                <div className="flex items-center gap-2 mb-3">
+                  <MessageSquare className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                  <div className="h-4 w-32 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse" />
+                </div>
+                <div className="p-3 bg-gray-100 dark:bg-zinc-800 rounded-lg space-y-2">
+                  <div className="h-3 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse w-full" />
+                  <div className="h-3 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse w-5/6" />
+                  <div className="h-3 bg-gray-200 dark:bg-zinc-700 rounded animate-pulse w-4/6" />
+                </div>
+              </div>
+            ) : enrichedData?.reviews_summary ? (
+              <div className="pt-4 border-t border-gray-200 dark:border-zinc-700">
+                <div className="flex items-center gap-2 mb-3">
+                  <MessageSquare className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Customer Reviews</h4>
+                </div>
+                <div className="p-3 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-lg border border-purple-100 dark:border-purple-800">
+                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                    {enrichedData.reviews_summary}
+                  </p>
+                </div>
+              </div>
+            ) : showReviews && (
               <div className="pt-4 border-t border-gray-200 dark:border-zinc-700">
                 <div className="flex items-center gap-2 mb-3">
                   <MessageSquare className="h-5 w-5 text-gray-600 dark:text-gray-400" />
